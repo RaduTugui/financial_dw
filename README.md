@@ -242,23 +242,6 @@ Claude automatically chains multiple tools for complex questions (agentic behavi
 
 **Themes:** 🌙 Dark / ☀️ Light / 💻 System (saved in localStorage)
 
----
-
-## ✅ Requirements Coverage
-
-| Requirement | Status |
-|-------------|--------|
-| UC1: Data Ingest from providers | ✅ |
-| UC1: Provenance tracking | ✅ |
-| UC2: Q1-Q5 REST API queries | ✅ |
-| UC3: Analytics & aggregation | ✅ |
-| UC4: LLM via MCP | ✅ |
-| Bonus: Agentic multi-step AI | ✅ |
-| NoSQL database (MongoDB) | ✅ |
-| Heterogeneous data model | ✅ |
-| Temporal database design | ✅ |
-
----
 
 ## 🛠️ Troubleshooting
 
