@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acme Ltd - Financial Data Warehouse</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ── THEME VARIABLES ── */
+        :root {
+            --bg-primary:    #0f1117;
+            --bg-secondary:  #161b22;
+            --bg-tertiary:   #0d1117;
+            --bg-hover:      #1f2937;
+            --border:        #30363d;
+            --border-light:  #21262d;
+            --text-primary:  #f0f6fc;
+            --text-secondary:#e0e0e0;
+            --text-muted:    #8b949e;
+            --accent-blue:   #58a6ff;
+            --accent-green:  #7ee787;
+            --accent-orange: #f0883e;
+            --accent-red:    #f85149;
+            --btn-primary:   #238636;
+            --btn-blue:      #1f6feb;
+        }
+
+        /* ── LIGHT MODE ── */
+        body.light-mode {
+            --bg-primary:    #f6f8fa;
+            --bg-secondary:  #ffffff;
+            --bg-tertiary:   #f6f8fa;
+            --bg-hover:      #eaeef2;
+            --border:        #d0d7de;
+            --border-light:  #e1e4e8;
+            --text-primary:  #1f2328;
+            --text-secondary:#24292f;
+            --text-muted:    #656d76;
+            --accent-blue:   #0969da;
+            --accent-green:  #1a7f37;
+            --accent-orange: #bc4c00;
+            --accent-red:    #cf222e;
+            --btn-primary:   #1a7f37;
+            --btn-blue:      #0969da;
+        }
+
+        /* Light mode specific overrides */
+        body.light-mode td,
+        body.light-mode th { color: #24292f; }
+
+        body.light-mode .stat-card .value { color: #1f2328; }
+        body.light-mode .stat-card .label { color: #656d76; }
+        body.light-mode .stat-card .sub   { color: #0969da; }
+
+        body.light-mode .card-header h3 { color: #1f2328; }
+        body.light-mode .page-header h1 { color: #1f2328; }
+        body.light-mode .page-header p  { color: #656d76; }
+
+        body.light-mode .logo h2  { color: #0969da; }
+        body.light-mode .logo span { color: #656d76; }
+        body.light-mode .nav-item  { color: #656d76; }
+        body.light-mode .nav-item:hover { color: #24292f; }
+        body.light-mode .nav-item.active { color: #0969da; }
+
+        body.light-mode input[type="text"],
+        body.light-mode input[type="date"],
+        body.light-mode select {
+            background: #ffffff;
+            border-color: #d0d7de;
+            color: #24292f;
+        }
+
+        body.light-mode .badge-stock     { background: #ddf4ff; color: #0969da; }
+        body.light-mode .badge-crypto    { background: #fff8c5; color: #9a6700; }
+        body.light-mode .badge-commodity { background: #dafbe1; color: #1a7f37; }
+        body.light-mode .badge-bond      { background: #ffeff7; color: #bf3989; }
+
+        body.light-mode .chat-msg-ai .bubble { background: #eaeef2; color: #24292f; }
+        body.light-mode .chat-msg-user .bubble { background: #0969da; color: #fff; }
+
+        body.light-mode .prov-id { color: #0969da; }
+        body.light-mode .prov-meta { color: #656d76; }
+        body.light-mode .prov-hash { color: #656d76; }
+
+        body.light-mode .tool-name { color: #bc4c00; }
+        body.light-mode .tool-desc { color: #656d76; }
+
+        body.light-mode .json-output { color: #1a7f37; background: #f6f8fa; }
+
+        body.light-mode .sidebar {
+            background: #ffffff;
+            border-right: 1px solid #d0d7de;
+        }
+
+        body.light-mode .main { background: #f6f8fa; }
+
+        body.light-mode table thead th {
+            background: #eaeef2;
+            color: #656d76;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            position: fixed;
+            left: 0; top: 0;
+            width: 220px; height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .logo {
+            padding: 24px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo h2 {
+            color: var(--accent-blue);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .logo span {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-muted);
+            font-size: 14px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover { background: var(--bg-hover); color: var(--text-secondary); }
+        .nav-item.active { background: #1f2937; color: var(--accent-blue); border-left-color: var(--accent-blue); }
+
+        /* ── MAIN ── */
+        .main {
+            margin-left: 220px;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* ── HEADER ── */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .page-header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .page-header p { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+        /* ── CARDS ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .stat-card .label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 28px; font-weight: 700; color: var(--text-primary); margin: 8px 0 4px; }
+        .stat-card .sub { color: var(--accent-blue); font-size: 12px; }
+
+        /* ── TABLE CARD ── */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+
+        /* ── BUTTONS ── */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: var(--btn-primary); color: #fff; }
+        .btn-primary:hover { background: var(--btn-primary); filter: brightness(1.1); }
+        .btn-blue { background: var(--btn-blue); color: #fff; }
+        .btn-blue:hover { background: var(--btn-blue); filter: brightness(1.1); }
+        .btn-outline { background: transparent; color: var(--text-muted); border: 1px solid #30363d; }
+        .btn-outline:hover { background: var(--bg-hover); color: var(--text-secondary); }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+        /* ── TABLE ── */
+        table { width: 100%; border-collapse: collapse; }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #0d1117;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-light);
+            color: #e0e0e0;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: var(--bg-hover); }
+
+        /* ── BADGES ── */
+        .badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-stock { background: #1f3d6e; color: var(--accent-blue); }
+        .badge-crypto { background: #3d2b1f; color: #f0883e; }
+        .badge-commodity { background: #2d3b1f; color: #7ee787; }
+        .badge-bond { background: #3b1f2d; color: #f778ba; }
+
+        /* ── SEARCH / FILTER BAR ── */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"], select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        input[type="text"]:focus, select:focus { border-color: var(--accent-blue); }
+        input[type="text"] { min-width: 220px; }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            width: 560px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 { color: var(--text-primary); font-size: 18px; margin-bottom: 20px; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; color: var(--text-muted); font-size: 12px; margin-bottom: 6px; text-transform: uppercase; }
+        .form-group input, .form-group select {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+        /* ── CHART ── */
+        .chart-container {
+            padding: 20px;
+            height: 300px;
+            position: relative;
+        }
+
+        /* ── DETAIL PANEL ── */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .detail-item { }
+        .detail-item .key { color: var(--text-muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px; }
+        .detail-item .val { color: var(--text-primary); font-size: 14px; font-weight: 500; }
+
+        /* ── LOADING / EMPTY ── */
+        .loading, .empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .loading::before { content: "⏳ "; }
+        .empty::before { content: "📭 "; }
+
+        /* ── ALERT ── */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .alert-success { background: #1a3a1f; border: 1px solid #238636; color: #7ee787; }
+        .alert-error { background: #3a1a1a; border: 1px solid #f85149; color: #ff7b72; }
+
+        /* ── TIMESERIES PAGE ── */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+        /* ── PROVENANCE ── */
+        .prov-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .prov-item:last-child { border-bottom: none; }
+        .prov-item .prov-id { color: var(--accent-blue); font-size: 12px; font-family: monospace; }
+        .prov-item .prov-meta { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+        .prov-item .prov-hash { color: var(--text-muted); font-size: 11px; font-family: monospace; }
+
+        /* ── MCP ── */
+        .mcp-tool {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mcp-tool:last-child { border-bottom: none; }
+        .mcp-tool .tool-name { color: #f0883e; font-family: monospace; font-size: 14px; }
+        .mcp-tool .tool-desc { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+
+        .json-output {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #7ee787;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+
+        /* ── CHAT ── */
+        #chat-messages::-webkit-scrollbar { width: 6px; }
+        #chat-messages::-webkit-scrollbar-track { background: transparent; }
+        #chat-messages::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+        .chat-msg-user {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            flex-direction: row-reverse;
+        }
+        .chat-msg-user .bubble {
+            background: #1f6feb;
+            border-radius: 12px;
+            border-top-right-radius: 4px;
+            padding: 12px 16px;
+            max-width: 80%;
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .chat-msg-ai {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .chat-msg-ai .bubble {
+            background: #1f2937;
+            border-radius: 12px;
+            border-top-left-radius: 4px;
+            padding: 14px 16px;
+            max-width: 80%;
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .chat-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .avatar-user { background: #1f6feb; }
+        .avatar-ai   { background: linear-gradient(135deg, #f0883e, #58a6ff); }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding: 8px 0;
+        }
+        .typing-dot {
+            width: 8px; height: 8px;
+            background: #58a6ff;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        .tool-call-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-family: monospace;
+            color: #f0883e;
+            margin: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <div class="logo">
+        <h2>📈 Acme Ltd</h2>
+        <span>Financial Data Warehouse</span>
+    </div>
+    <!-- Theme switcher -->
+    <div style="padding:10px 20px;border-bottom:1px solid var(--border);display:flex;gap:4px;">
+        <button onclick="setTheme('dark')"  id="btn-dark"   title="Dark mode"
+            style="flex:1;padding:5px;border-radius:6px;border:1px solid var(--border);
+                   background:var(--bg-hover);color:var(--text-muted);cursor:pointer;font-size:14px;">🌙</button>
+        <button onclick="setTheme('light')" id="btn-light"  title="Light mode"
+            style="flex:1;padding:5px;border-radius:6px;border:1px solid var(--border);
+                   background:var(--bg-hover);color:var(--text-muted);cursor:pointer;font-size:14px;">☀️</button>
+        <button onclick="setTheme('system')" id="btn-system" title="System mode"
+            style="flex:1;padding:5px;border-radius:6px;border:1px solid var(--border);
+                   background:var(--bg-hover);color:var(--text-muted);cursor:pointer;font-size:14px;">💻</button>
+    </div>
+    <div class="nav-item active" onclick="showPage('dashboard')">🏠 Dashboard</div>
+    <div class="nav-item" onclick="showPage('instruments')">📊 Instruments</div>
+    <div class="nav-item" onclick="showPage('timeseries')">📉 Time Series</div>
+    <div class="nav-item" onclick="showPage('sources')">🔌 Data Sources</div>
+    <div class="nav-item" onclick="showPage('provenance')">🔍 Provenance</div>
+    <div class="nav-item" onclick="showPage('mcp')">🤖 AI Assistant</div>
+    <div class="nav-item" onclick="showPage('ingest')">⬆️ Ingest Data</div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+    <!-- ══════════════════════════════════════════════
+         DASHBOARD PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page active" id="page-dashboard">
+        <div class="page-header">
+            <div>
+                <h1>Dashboard</h1>
+                <p>Overview of your financial data warehouse</p>
+            </div>
+            <button class="btn btn-outline" onclick="loadDashboard()">🔄 Refresh</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total Instruments</div>
+                <div class="value" id="stat-instruments">—</div>
+                <div class="sub">Financial assets</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Data Sources</div>
+                <div class="value" id="stat-sources">—</div>
+                <div class="sub">Registered providers</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Status</div>
+                <div class="value" id="stat-status">—</div>
+                <div class="sub">API health</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Version</div>
+                <div class="value">1.0</div>
+                <div class="sub">Platform version</div>
+            </div>
+        </div>
+
+        <!-- Instruments quick table -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📊 Instruments Overview</h3>
+                <button class="btn btn-outline btn-sm" onclick="showPage('instruments')">View All</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Name</th>
+                        <th>Class</th>
+                        <th>Region</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="dashboard-instruments-table">
+                    <tr><td colspan="5" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Sources quick table -->
+        <div class="card">
+            <div class="card-header">
+                <h3>🔌 Data Sources</h3>
+                <button class="btn btn-outline btn-sm" onclick="showPage('sources')">View All</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="dashboard-sources-table">
+                    <tr><td colspan="4" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         INSTRUMENTS PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page" id="page-instruments">
+        <div class="page-header">
+            <div>
+                <h1>Instruments</h1>
+                <p>All registered financial assets</p>
+            </div>
+            <button class="btn btn-primary" onclick="openModal('modal-add-instrument')">+ Add Instrument</button>
+        </div>
+
+        <div id="instruments-alert"></div>
+
+        <div class="toolbar">
+            <input type="text" id="search-instruments" placeholder="🔍 Search by symbol or name..." oninput="filterInstruments()">
+            <select id="filter-class" onchange="filterInstruments()">
+                <option value="">All Classes</option>
+                <option value="stock">Stock</option>
+                <option value="crypto">Crypto</option>
+                <option value="commodity">Commodity</option>
+                <option value="bond">Bond</option>
+            </select>
+            <button class="btn btn-outline" onclick="loadInstruments()">🔄 Refresh</button>
+            <button class="btn btn-outline" id="btn-show-deleted" onclick="toggleDeletedInstruments()" style="color:#f85149;border-color:#f85149;">
+                👁 Show Deleted
+            </button>
+        </div>
+        <div id="deleted-instruments-panel" style="display:none;margin-bottom:16px;">
+            <div class="card">
+                <div class="card-header">
+                    <h3 style="color:#f85149;">🗑 Deleted Instruments (Temporal Records)</h3>
+                    <span style="color:#8b949e;font-size:12px;">These records are preserved in the database per temporal database design</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>Deleted At</th>
+                            <th>Reason</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deleted-instruments-table">
+                        <tr><td colspan="6" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Name</th>
+                        <th>Class</th>
+                        <th>Region</th>
+                        <th>Asset ID</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="instruments-table">
+                    <tr><td colspan="6" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         TIME SERIES PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page" id="page-timeseries">
+        <div class="page-header">
+            <div>
+                <h1>Time Series</h1>
+                <p>Price and indicator data over time</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="card" style="padding: 20px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
+                <div>
+                    <label style="color:#8b949e; font-size:12px; display:block; margin-bottom:6px;">INSTRUMENT</label>
+                    <select id="ts-instrument" style="width:100%" onchange="onTsInstrumentChange()">
+                        <option value="">Select instrument...</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="color:#8b949e; font-size:12px; display:block; margin-bottom:6px;">DATA SOURCE</label>
+                    <select id="ts-source" style="width:100%">
+                        <option value="">Select source...</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="color:#8b949e; font-size:12px; display:block; margin-bottom:6px;">START DATE</label>
+                    <input type="date" id="ts-start" style="width:100%">
+                </div>
+                <div>
+                    <label style="color:#8b949e; font-size:12px; display:block; margin-bottom:6px;">END DATE</label>
+                    <input type="date" id="ts-end" style="width:100%">
+                </div>
+                <button class="btn btn-blue" onclick="loadTimeSeries()">📈 Load</button>
+            </div>
+            <!-- Quick range buttons -->
+            <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+                <span style="color:#8b949e; font-size:12px;">Quick range:</span>
+                <button class="btn btn-outline btn-sm" onclick="setDateRange(7)">7D</button>
+                <button class="btn btn-outline btn-sm" onclick="setDateRange(30)">1M</button>
+                <button class="btn btn-outline btn-sm" onclick="setDateRange(90)">3M</button>
+                <button class="btn btn-outline btn-sm" onclick="setDateRange(180)">6M</button>
+                <button class="btn btn-outline btn-sm" onclick="setDateRange(365)">1Y</button>
+                <button class="btn btn-outline btn-sm" onclick="setDateRange(null)">All</button>
+            </div>
+        </div>
+
+        <!-- Stats bar -->
+        <div id="ts-stats-bar" style="display:none; margin-bottom:16px;">
+            <div style="display:grid; grid-template-columns: repeat(6,1fr); gap:12px;">
+                <div class="stat-card" style="padding:14px;">
+                    <div class="label">Min Price</div>
+                    <div class="value" id="stat-min" style="font-size:18px;">—</div>
+                </div>
+                <div class="stat-card" style="padding:14px;">
+                    <div class="label">Max Price</div>
+                    <div class="value" id="stat-max" style="font-size:18px;">—</div>
+                </div>
+                <div class="stat-card" style="padding:14px;">
+                    <div class="label">Avg Price</div>
+                    <div class="value" id="stat-avg" style="font-size:18px;">—</div>
+                </div>
+                <div class="stat-card" style="padding:14px;">
+                    <div class="label">Change</div>
+                    <div class="value" id="stat-change" style="font-size:18px;">—</div>
+                </div>
+                <div class="stat-card" style="padding:14px;">
+                    <div class="label">Data Points</div>
+                    <div class="value" id="stat-count" style="font-size:18px;">—</div>
+                </div>
+                <div class="stat-card" style="padding:14px;">
+                    <div class="label">Data Quality</div>
+                    <div class="value" id="stat-quality" style="font-size:18px;">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Price Chart -->
+        <div class="card" id="ts-chart-card" style="display:none; margin-bottom:16px;">
+            <div class="card-header">
+                <h3 id="ts-chart-title">Price Chart</h3>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-outline btn-sm" onclick="setChartType('line')">Line</button>
+                    <button class="btn btn-outline btn-sm" onclick="setChartType('bar')">Bar</button>
+                </div>
+            </div>
+            <div class="chart-container" style="height:350px;">
+                <canvas id="ts-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Volume Chart -->
+        <div class="card" id="ts-volume-card" style="display:none; margin-bottom:16px;">
+            <div class="card-header">
+                <h3>Volume</h3>
+            </div>
+            <div class="chart-container" style="height:150px;">
+                <canvas id="ts-volume-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="card" id="ts-table-card" style="display:none">
+            <div class="card-header">
+                <h3>Data Points</h3>
+                <span id="ts-count" style="color:#8b949e; font-size:13px;"></span>
+            </div>
+            <div style="max-height:400px; overflow-y:auto;">
+                <table>
+                    <thead style="position:sticky;top:0;z-index:1;">
+                        <tr>
+                            <th>Date</th>
+                            <th>Open</th>
+                            <th>Close</th>
+                            <th>High</th>
+                            <th>Low</th>
+                            <th>Volume</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ts-table">
+                        <tr><td colspan="7" class="empty">Select an instrument and source to load data</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         DATA SOURCES PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page" id="page-sources">
+        <div class="page-header">
+            <div>
+                <h1>Data Sources</h1>
+                <p>Registered financial data providers</p>
+            </div>
+            <button class="btn btn-primary" onclick="openModal('modal-add-source')">+ Add Source</button>
+        </div>
+
+        <div id="sources-alert"></div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Provider Name</th>
+                        <th>Type</th>
+                        <th>API Endpoint</th>
+                        <th>Description</th>
+                        <th>Source ID</th>
+                    </tr>
+                </thead>
+                <tbody id="sources-table">
+                    <tr><td colspan="5" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PROVENANCE PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page" id="page-provenance">
+        <div class="page-header">
+            <div>
+                <h1>Data Provenance</h1>
+                <p>Track where your data comes from</p>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 20px; margin-bottom: 20px;">
+            <div style="display: flex; gap: 12px; align-items: end;">
+                <div style="flex:1">
+                    <label style="color:#8b949e; font-size:12px; display:block; margin-bottom:6px;">SELECT INSTRUMENT</label>
+                    <select id="prov-instrument" style="width:100%">
+                        <option value="">Select instrument...</option>
+                    </select>
+                </div>
+                <button class="btn btn-blue" onclick="loadProvenance()">🔍 Load Provenance</button>
+            </div>
+        </div>
+
+        <div class="card" id="prov-card" style="display:none">
+            <div class="card-header">
+                <h3>Provenance Records</h3>
+                <span id="prov-count" style="color:#8b949e; font-size:13px;"></span>
+            </div>
+            <div id="prov-list"></div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         MCP TOOLS PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page" id="page-mcp">
+        <div class="page-header">
+            <div>
+                <h1>🤖 AI Assistant</h1>
+                <p>Ask questions about your financial data in natural language</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <span style="color:#8b949e;font-size:12px;">Powered by</span>
+                <span style="color:#f0883e;font-size:13px;font-weight:600;">Claude AI + MCP</span>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;height:calc(100vh - 160px);">
+
+            <!-- ── CHAT PANEL ── -->
+            <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+                <div class="card-header">
+                    <h3>💬 Chat with your data</h3>
+                    <button class="btn btn-outline btn-sm" onclick="clearChat()">🗑 Clear</button>
+                </div>
+
+                <!-- Messages -->
+                <div id="chat-messages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;">
+                    <!-- Welcome message -->
+                    <div style="display:flex;gap:12px;align-items:flex-start;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#f0883e,#58a6ff);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🤖</div>
+                        <div style="background:#1f2937;border-radius:12px;border-top-left-radius:4px;padding:14px 16px;max-width:80%;">
+                            <div style="color:#f0f6fc;font-size:14px;line-height:1.6;">
+                                Hi! I'm your AI financial assistant powered by Claude. I can help you explore your data warehouse. Try asking me:
+                                <ul style="margin-top:10px;padding-left:20px;color:#8b949e;">
+                                    <li>What instruments are available?</li>
+                                    <li>What's the trend for TSLA?</li>
+                                    <li>Compare MSFT and AAPL performance</li>
+                                    <li>What are the statistics for Bitcoin?</li>
+                                    <li>Where does the data come from?</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input -->
+                <div style="padding:16px;border-top:1px solid #30363d;display:flex;gap:10px;">
+                    <input type="text" id="chat-input"
+                        placeholder="Ask about your financial data..."
+                        style="flex:1;background:#0d1117;border:1px solid #30363d;color:#e0e0e0;padding:10px 14px;border-radius:8px;font-size:14px;"
+                        onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendChatMessage()}"
+                    >
+                    <button class="btn btn-blue" onclick="sendChatMessage()" id="chat-send-btn" style="padding:10px 20px;">
+                        Send ➤
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── SIDEBAR: Tools + Quick prompts ── -->
+            <div style="display:flex;flex-direction:column;gap:16px;overflow-y:auto;">
+
+                <!-- Quick prompts -->
+                <div class="card">
+                    <div class="card-header"><h3>⚡ Quick Questions</h3></div>
+                    <div style="padding:12px;display:flex;flex-direction:column;gap:8px;">
+                        <button class="btn btn-outline" style="text-align:left;font-size:12px;" onclick="setPrompt('List all available instruments')">📊 List all instruments</button>
+                        <button class="btn btn-outline" style="text-align:left;font-size:12px;" onclick="setPrompt('What is the trend for TSLA?')">📈 TSLA trend</button>
+                        <button class="btn btn-outline" style="text-align:left;font-size:12px;" onclick="setPrompt('Compare MSFT and AAPL performance')">⚖️ Compare MSFT vs AAPL</button>
+                        <button class="btn btn-outline" style="text-align:left;font-size:12px;" onclick="setPrompt('What are the statistics for Bitcoin BTC-USD?')">₿ Bitcoin stats</button>
+                        <button class="btn btn-outline" style="text-align:left;font-size:12px;" onclick="setPrompt('What data sources are available and where does the data come from?')">🔌 Data sources</button>
+                        <button class="btn btn-outline" style="text-align:left;font-size:12px;" onclick="setPrompt('What is the latest price for AAPL?')">💰 Latest AAPL price</button>
+                        <button class="btn btn-outline" style="text-align:left;font-size:12px;" onclick="setPrompt('Analyze the risk for ETH-USD Ethereum')">⚠️ ETH risk analysis</button>
+                        <button class="btn btn-outline" style="text-align:left;font-size:12px;" onclick="setPrompt('Show me the provenance of TSLA data')">🔍 TSLA data lineage</button>
+                    </div>
+                </div>
+
+                <!-- Available MCP Tools -->
+                <div class="card">
+                    <div class="card-header"><h3>🔧 MCP Tools</h3></div>
+                    <div id="mcp-tools-list" style="max-height:300px;overflow-y:auto;">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Tool call log -->
+                <div class="card">
+                    <div class="card-header"><h3>📋 Tool Call Log</h3></div>
+                    <div id="tool-log" style="padding:12px;font-family:monospace;font-size:11px;color:#8b949e;max-height:200px;overflow-y:auto;">
+                        <div style="color:#30363d;">No tool calls yet...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         INGEST PAGE
+    ══════════════════════════════════════════════ -->
+    <div class="page" id="page-ingest">
+        <div class="page-header">
+            <div>
+                <h1>Ingest Data</h1>
+                <p>Add new instruments and time series data</p>
+            </div>
+        </div>
+
+        <div id="ingest-alert"></div>
+
+        <div class="two-col">
+            <!-- Add Instrument -->
+            <div class="card">
+                <div class="card-header"><h3>➕ Add Instrument</h3></div>
+                <div style="padding: 20px;">
+                    <div class="form-group">
+                        <label>Symbol *</label>
+                        <input type="text" id="ing-symbol" placeholder="e.g. GOOGL">
+                    </div>
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" id="ing-name" placeholder="e.g. Alphabet Inc">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" id="ing-desc" placeholder="Short description">
+                    </div>
+                    <div class="form-group">
+                        <label>Class *</label>
+                        <select id="ing-class">
+                            <option value="stock">Stock</option>
+                            <option value="crypto">Crypto</option>
+                            <option value="commodity">Commodity</option>
+                            <option value="bond">Bond</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Region</label>
+                        <input type="text" id="ing-region" placeholder="e.g. US, Europe, Global">
+                    </div>
+                    <div class="form-group">
+                        <label>Currency</label>
+                        <input type="text" id="ing-currency" placeholder="e.g. USD, EUR">
+                    </div>
+                    <button class="btn btn-primary" onclick="addInstrument()" style="width:100%">➕ Add Instrument</button>
+                </div>
+            </div>
+
+            <!-- Add Time Series -->
+            <div class="card">
+                <div class="card-header"><h3>📈 Add Price Data</h3></div>
+                <div style="padding: 20px;">
+                    <div class="form-group">
+                        <label>Instrument *</label>
+                        <select id="ing-ts-instrument" style="width:100%">
+                            <option value="">Select instrument...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data Source *</label>
+                        <select id="ing-ts-source" style="width:100%">
+                            <option value="">Select source...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Timestamp *</label>
+                        <input type="text" id="ing-ts-timestamp" placeholder="2024-01-15T10:30:00">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>Open</label>
+                            <input type="text" id="ing-ts-open" placeholder="150.25">
+                        </div>
+                        <div class="form-group">
+                            <label>Close</label>
+                            <input type="text" id="ing-ts-close" placeholder="155.80">
+                        </div>
+                        <div class="form-group">
+                            <label>High</label>
+                            <input type="text" id="ing-ts-high" placeholder="158.20">
+                        </div>
+                        <div class="form-group">
+                            <label>Low</label>
+                            <input type="text" id="ing-ts-low" placeholder="149.30">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Volume</label>
+                        <input type="text" id="ing-ts-volume" placeholder="2500000">
+                    </div>
+                    <button class="btn btn-primary" onclick="addTimeSeries()" style="width:100%">➕ Add Price Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- end .main -->
+
+<!-- Instrument Detail Modal -->
+<div class="modal-overlay" id="modal-instrument-detail">
+    <div class="modal" style="width:680px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h3 id="detail-modal-title" style="margin:0;">Instrument Details</h3>
+            <button class="btn btn-outline btn-sm" onclick="closeModal('modal-instrument-detail')">✕ Close</button>
+        </div>
+        <div id="detail-modal-body">Loading...</div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-instrument-detail')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════ -->
+
+<!-- Add Instrument Modal -->
+<div class="modal-overlay" id="modal-add-instrument">
+    <div class="modal">
+        <h3>➕ Add New Instrument</h3>
+        <div class="form-group">
+            <label>Symbol *</label>
+            <input type="text" id="m-symbol" placeholder="e.g. GOOGL">
+        </div>
+        <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="m-name" placeholder="e.g. Alphabet Inc">
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="m-desc" placeholder="Short description">
+        </div>
+        <div class="form-group">
+            <label>Class *</label>
+            <select id="m-class">
+                <option value="stock">Stock</option>
+                <option value="crypto">Crypto</option>
+                <option value="commodity">Commodity</option>
+                <option value="bond">Bond</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Region</label>
+            <input type="text" id="m-region" placeholder="e.g. US">
+        </div>
+        <div class="form-group">
+            <label>Currency</label>
+            <input type="text" id="m-currency" placeholder="e.g. USD">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-add-instrument')">Cancel</button>
+            <button class="btn btn-primary" onclick="submitInstrumentModal()">Add Instrument</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Source Modal -->
+<div class="modal-overlay" id="modal-add-source">
+    <div class="modal">
+        <h3>🔌 Add New Data Source</h3>
+        <div class="form-group">
+            <label>Provider Name *</label>
+            <input type="text" id="s-name" placeholder="e.g. My Data Provider">
+        </div>
+        <div class="form-group">
+            <label>Provider Type *</label>
+            <select id="s-type">
+                <option value="nasdaq">Nasdaq</option>
+                <option value="bloomberg">Bloomberg</option>
+                <option value="internal">Internal</option>
+                <option value="custom">Custom</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>API Endpoint *</label>
+            <input type="text" id="s-endpoint" placeholder="https://api.example.com">
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="s-desc" placeholder="Short description">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-add-source')">Cancel</button>
+            <button class="btn btn-primary" onclick="submitSourceModal()">Add Source</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script>
+const API = '';  // same origin
+let allInstruments = [];
+let allSources = [];
+let tsChart = null;
+
+// ── NAVIGATION ──
+function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => {
+        if (n.textContent.toLowerCase().includes(name.replace('-', ' '))) n.classList.add('active');
+    });
+
+    // Load data for the page
+    if (name === 'dashboard') loadDashboard();
+    if (name === 'instruments') loadInstruments();
+    if (name === 'sources') loadSources();
+    if (name === 'timeseries') loadTsSelects();
+    if (name === 'provenance') loadProvSelects();
+    if (name === 'mcp') loadMcpTools();
+    if (name === 'ingest') loadIngestSelects();
+}
+
+// ── MODAL ──
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modal clicking outside
+document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── BADGE ──
+function badge(cls) {
+    const map = { stock: 'badge-stock', crypto: 'badge-crypto', commodity: 'badge-commodity', bond: 'badge-bond' };
+    return `<span class="badge ${map[cls] || 'badge-stock'}">${cls}</span>`;
+}
+
+// ── ALERT ──
+function showAlert(containerId, msg, type = 'success') {
+    const el = document.getElementById(containerId);
+    el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    setTimeout(() => el.innerHTML = '', 4000);
+}
+
+// ── FETCH HELPER ──
+async function api(path, opts = {}) {
+    const res = await fetch(API + path, opts);
+    return res.json();
+}
+
+// ══════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════
+async function loadDashboard() {
+    // Health
+    try {
+        const h = await api('/health');
+        document.getElementById('stat-status').textContent = h.status === 'healthy' ? '✅' : '❌';
+    } catch { document.getElementById('stat-status').textContent = '❌'; }
+
+    // Instruments
+    const inst = await api('/api/instruments?limit=100');
+    allInstruments = inst.data || [];
+    document.getElementById('stat-instruments').textContent = inst.count || 0;
+
+    const tbody = document.getElementById('dashboard-instruments-table');
+    if (!allInstruments.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No instruments found. Run sample_data_generator.py</td></tr>';
+    } else {
+        tbody.innerHTML = allInstruments.slice(0, 6).map(i => `
+            <tr>
+                <td><strong style="color:#58a6ff">${i.symbol}</strong></td>
+                <td>${i.name}</td>
+                <td>${badge(i.instrumentClass)}</td>
+                <td>${i.region}</td>
+                <td>
+                    <button class="btn btn-outline btn-sm" onclick="showPage('timeseries')">📉 Chart</button>
+                </td>
+            </tr>`).join('');
+    }
+
+    // Sources
+    const src = await api('/api/sources');
+    allSources = src.data || [];
+    document.getElementById('stat-sources').textContent = src.count || 0;
+
+    const stbody = document.getElementById('dashboard-sources-table');
+    if (!allSources.length) {
+        stbody.innerHTML = '<tr><td colspan="4" class="empty">No sources found.</td></tr>';
+    } else {
+        stbody.innerHTML = allSources.map(s => `
+            <tr>
+                <td><strong>${s.providerName}</strong></td>
+                <td>${s.providerType}</td>
+                <td style="color:#8b949e; font-size:12px;">${s.description}</td>
+                <td><button class="btn btn-outline btn-sm" onclick="showPage('sources')">View</button></td>
+            </tr>`).join('');
+    }
+}
+
+// ══════════════════════════════════════════════
+// INSTRUMENTS
+// ══════════════════════════════════════════════
+async function loadInstruments() {
+    const data = await api('/api/instruments?limit=200');
+    allInstruments = data.data || [];
+    renderInstruments(allInstruments);
+}
+
+function renderInstruments(list) {
+    const tbody = document.getElementById('instruments-table');
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No instruments found</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map(i => `
+        <tr>
+            <td><strong style="color:#58a6ff">${i.symbol}</strong></td>
+            <td>${i.name}</td>
+            <td>${badge(i.instrumentClass)}</td>
+            <td>${i.region}</td>
+            <td style="font-family:monospace; font-size:11px; color:#8b949e;">${i.assetId}</td>
+            <td>
+                <button class="btn btn-outline btn-sm" onclick="viewInstrumentDetails('${i.assetId}', '${i.symbol}')">🔍 Details</button>
+                <button class="btn btn-outline btn-sm" onclick="goToChart('${i.assetId}')">📉 Chart</button>
+                <button class="btn btn-sm" style="background:#3a1a1a;color:#f85149;border:1px solid #f85149;" onclick="deleteInstrument('${i.assetId}', '${i.symbol}')">🗑 Delete</button>
+            </td>
+        </tr>`).join('');
+}
+
+async function toggleDeletedInstruments() {
+    const panel = document.getElementById('deleted-instruments-panel');
+    const btn   = document.getElementById('btn-show-deleted');
+    const showing = panel.style.display !== 'none';
+
+    if (showing) {
+        panel.style.display = 'none';
+        btn.textContent = '👁 Show Deleted';
+    } else {
+        panel.style.display = 'block';
+        btn.textContent = '🙈 Hide Deleted';
+        await loadDeletedInstruments();
+    }
+}
+
+async function loadDeletedInstruments() {
+    const data = await api('/api/instruments/inactive');
+    const tbody = document.getElementById('deleted-instruments-table');
+    const instruments = data.data || [];
+
+    if (!instruments.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No deleted instruments</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = instruments.map(i => {
+        const marker = i.deletionMarker || '';
+        const deletedAt = i.validTo ? i.validTo.split('T')[0] : 'Unknown';
+        const reason = marker.split('_').slice(2).join('_') || 'Unknown';
+        return `<tr>
+            <td><strong style="color:#f85149;">${i.symbol}</strong></td>
+            <td>${i.name}</td>
+            <td>${i.instrumentClass}</td>
+            <td style="color:#8b949e;">${deletedAt}</td>
+            <td style="color:#8b949e;font-size:12px;">${reason}</td>
+            <td>
+                <button class="btn btn-sm" style="background:#1a3a1f;color:#7ee787;border:1px solid #7ee787;"
+                    onclick="restoreInstrument('${i.instrumentId}', '${i.symbol}')">
+                    ♻️ Restore
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function restoreInstrument(id, symbol) {
+    if (!confirm(`Restore ${symbol}?\n\nThis will reactivate the instrument and make it visible again.`)) return;
+
+    const res = await fetch(`/api/instruments/${id}/restore`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    });
+    const data = await res.json();
+
+    if (data.status === 'success') {
+        showAlert('instruments-alert', `✅ ${symbol} restored successfully!`);
+        loadInstruments();
+        loadDeletedInstruments();
+    } else {
+        showAlert('instruments-alert', `❌ Error: ${data.error}`, 'error');
+    }
+}
+
+async function deleteInstrument(id, symbol) {
+    // Confirm before temporal deletion
+    if (!confirm(`Temporally delete ${symbol}?\n\nThe record will be PRESERVED in the database (temporal database design) but marked as inactive.\n\nThis cannot be undone from the UI.`)) return;
+
+    const reason = prompt('Reason for deletion (optional):', 'user_requested') || 'user_requested';
+
+    const res = await fetch(`/api/instruments/${id}`, {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({reason: reason})
+    });
+
+    const data = await res.json();
+
+    if (data.status === 'success') {
+        showAlert('instruments-alert', `✅ ${symbol} marked as inactive. Record preserved in database per temporal database design.`);
+        loadInstruments(); // Refresh list
+    } else {
+        showAlert('instruments-alert', `❌ Error: ${data.error}`, 'error');
+    }
+}
+
+function filterInstruments() {
+    const search = document.getElementById('search-instruments').value.toLowerCase();
+    const cls = document.getElementById('filter-class').value;
+    const filtered = allInstruments.filter(i => {
+        const matchSearch = !search || i.symbol.toLowerCase().includes(search) || i.name.toLowerCase().includes(search);
+        const matchClass = !cls || i.instrumentClass === cls;
+        return matchSearch && matchClass;
+    });
+    renderInstruments(filtered);
+}
+
+async function viewInstrumentDetails(id, symbol) {
+    const data = await api(`/api/instruments/${id}`);
+    const d = data.data;
+    if (!d) { alert('Could not load details for ' + symbol); return; }
+
+    // Build attributes list
+    const attrs = d.attributes || [];
+    const attrsHtml = attrs.length
+        ? attrs.map(a => `<tr><td style="color:#8b949e;padding:6px 12px;">${a.attributeName}</td><td style="padding:6px 12px;">${a.attributeValue}</td></tr>`).join('')
+        : '<tr><td colspan="2" style="color:#8b949e;padding:6px 12px;">No custom attributes</td></tr>';
+
+    // Build sources list
+    const sources = d.dataSources || [];
+    const sourcesHtml = sources.length
+        ? sources.map(s => `<span style="background:#1f3d6e;color:#58a6ff;padding:3px 8px;border-radius:12px;font-size:11px;margin-right:4px;">${s.providerName}</span>`).join('')
+        : '<span style="color:#8b949e;">No sources linked</span>';
+
+    document.getElementById('detail-modal-body').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+            <div>
+                <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:4px;">Symbol</div>
+                <div style="font-size:24px;font-weight:700;color:#58a6ff;">${d.symbol}</div>
+            </div>
+            <div>
+                <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:4px;">Class</div>
+                <div style="font-size:16px;font-weight:600;">${d.instrumentClass}</div>
+            </div>
+            <div>
+                <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:4px;">Name</div>
+                <div>${d.name}</div>
+            </div>
+            <div>
+                <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:4px;">Region</div>
+                <div>${d.region}</div>
+            </div>
+            <div>
+                <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:4px;">Currency</div>
+                <div>${d.currency}</div>
+            </div>
+            <div>
+                <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:4px;">Status</div>
+                <div style="color:${d.isActive ? '#7ee787' : '#f85149'}">${d.isActive ? '✅ Active' : '❌ Inactive'}</div>
+            </div>
+        </div>
+        <div style="margin-bottom:16px;">
+            <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:8px;">Description</div>
+            <div style="color:#8b949e;">${d.description || 'N/A'}</div>
+        </div>
+        <div style="margin-bottom:16px;">
+            <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:8px;">Asset ID</div>
+            <div style="font-family:monospace;font-size:12px;color:#f0883e;">${d.instrumentId}</div>
+        </div>
+        <div style="margin-bottom:16px;">
+            <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:8px;">Data Sources</div>
+            <div>${sourcesHtml}</div>
+        </div>
+        <div>
+            <div style="color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:8px;">Custom Attributes</div>
+            <table style="width:100%;border-collapse:collapse;background:#0d1117;border-radius:6px;overflow:hidden;">
+                <thead><tr>
+                    <th style="padding:8px 12px;text-align:left;color:#8b949e;font-size:11px;background:#161b22;">Attribute</th>
+                    <th style="padding:8px 12px;text-align:left;color:#8b949e;font-size:11px;background:#161b22;">Value</th>
+                </tr></thead>
+                <tbody>${attrsHtml}</tbody>
+            </table>
+        </div>
+    `;
+    document.getElementById('detail-modal-title').textContent = symbol + ' — Details';
+    openModal('modal-instrument-detail');
+}
+
+function goToChart(assetId) {
+    document.getElementById('ts-instrument').value = assetId;
+    showPage('timeseries');
+}
+
+async function submitInstrumentModal() {
+    const body = {
+        symbol: document.getElementById('m-symbol').value,
+        name: document.getElementById('m-name').value,
+        description: document.getElementById('m-desc').value,
+        instrumentClass: document.getElementById('m-class').value,
+        region: document.getElementById('m-region').value || 'US',
+        currency: document.getElementById('m-currency').value || 'USD'
+    };
+    if (!body.symbol || !body.name) return alert('Symbol and Name are required!');
+    const res = await api('/ingest/register-instrument', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    closeModal('modal-add-instrument');
+    if (res.status === 'success') {
+        showAlert('instruments-alert', `✅ Instrument ${body.symbol} added successfully!`);
+        loadInstruments();
+    } else {
+        showAlert('instruments-alert', `❌ Error: ${JSON.stringify(res)}`, 'error');
+    }
+}
+
+// ══════════════════════════════════════════════
+// TIME SERIES
+// ══════════════════════════════════════════════
+let tsVolumeChart = null;
+let currentChartType = 'line';
+
+// Set default date range to last 90 days
+function initDateRange() {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 90);
+    document.getElementById('ts-end').value = end.toISOString().split('T')[0];
+    document.getElementById('ts-start').value = start.toISOString().split('T')[0];
+}
+
+function setDateRange(days) {
+    const end = new Date();
+    const start = new Date();
+    if (days) {
+        start.setDate(start.getDate() - days);
+        document.getElementById('ts-start').value = start.toISOString().split('T')[0];
+    } else {
+        document.getElementById('ts-start').value = '';
+    }
+    document.getElementById('ts-end').value = end.toISOString().split('T')[0];
+}
+
+function setChartType(type) {
+    currentChartType = type;
+    loadTimeSeries();
+}
+
+async function loadTsSelects() {
+    const inst = await api('/api/instruments?limit=200');
+    const src = await api('/api/sources');
+    allInstruments = inst.data || [];
+    allSources = src.data || [];
+
+    const iSel = document.getElementById('ts-instrument');
+    iSel.innerHTML = '<option value="">Select instrument...</option>' +
+        allInstruments.map(i => `<option value="${i.assetId}">${i.symbol} - ${i.name}</option>`).join('');
+
+    const sSel = document.getElementById('ts-source');
+    sSel.innerHTML = '<option value="">Select source...</option>' +
+        allSources.map(s => `<option value="${s.dataSourceId}">${s.providerName}</option>`).join('');
+
+    initDateRange();
+}
+
+function onTsInstrumentChange() {
+    // Auto-select first available source when instrument changes
+    const srcSel = document.getElementById('ts-source');
+    if (srcSel.options.length > 1 && !srcSel.value) {
+        srcSel.selectedIndex = 1;
+    }
+}
+
+function formatDate(ts) {
+    // Handle multiple timestamp formats:
+    // - 'Fri, 08 May 2026 04:00:00 GMT' (Flask default)
+    // - '2026-05-08T00:00:00' (ISO format)
+    if (!ts) return '—';
+    try {
+        const d = new Date(ts);
+        if (!isNaN(d)) {
+            return d.toISOString().split('T')[0];
+        }
+    } catch(e) {}
+    return ts.split('T')[0];
+}
+
+async function loadTimeSeries() {
+    const instId = document.getElementById('ts-instrument').value;
+    const srcId  = document.getElementById('ts-source').value;
+    const start  = document.getElementById('ts-start').value;
+    const end    = document.getElementById('ts-end').value;
+
+    if (!instId || !srcId) {
+        alert('Please select both an instrument and a data source!');
+        return;
+    }
+
+    // Show loading state
+    document.getElementById('ts-chart-card').style.display = 'block';
+    document.getElementById('ts-table-card').style.display = 'block';
+    document.getElementById('ts-volume-card').style.display = 'block';
+    document.getElementById('ts-stats-bar').style.display = 'block';
+    document.getElementById('ts-table').innerHTML = '<tr><td colspan="7" class="loading">Loading data...</td></tr>';
+
+    let url = `/api/timeseries?instrumentId=${instId}&dataSourceId=${srcId}&limit=500`;
+    if (start) url += `&startDate=${start}`;
+    if (end)   url += `&endDate=${end}`;
+
+    const data    = await api(url);
+    const records = (data.data || []).reverse(); // chronological order
+
+    // Update chart title
+    const inst = allInstruments.find(i => i.assetId === instId);
+    const src  = allSources.find(s => s.dataSourceId === srcId);
+    document.getElementById('ts-chart-title').textContent =
+        `${inst ? inst.symbol : instId} — ${src ? src.providerName : ''} Price Chart`;
+
+    // Stats
+    if (records.length > 0) {
+        const closes = records.map(r => r.indicators?.close).filter(v => v != null);
+        const minP   = Math.min(...closes);
+        const maxP   = Math.max(...closes);
+        const avgP   = closes.reduce((a,b) => a+b, 0) / closes.length;
+        const first  = closes[0];
+        const last   = closes[closes.length - 1];
+        const change = ((last - first) / first * 100);
+        const quality = records[0]?.dataQuality || 'unknown';
+
+        document.getElementById('stat-min').textContent     = `$${minP.toFixed(2)}`;
+        document.getElementById('stat-max').textContent     = `$${maxP.toFixed(2)}`;
+        document.getElementById('stat-avg').textContent     = `$${avgP.toFixed(2)}`;
+        document.getElementById('stat-count').textContent   = records.length;
+        document.getElementById('stat-quality').textContent = quality;
+
+        const changeEl = document.getElementById('stat-change');
+        changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+        changeEl.style.color = change >= 0 ? '#7ee787' : '#f85149';
+    }
+
+    document.getElementById('ts-count').textContent = `${records.length} records`;
+
+    // ── Price Chart ──
+    const labels  = records.map(r => formatDate(r.dataTimestamp));
+    const closes  = records.map(r => r.indicators?.close);
+    const highs   = records.map(r => r.indicators?.high);
+    const lows    = records.map(r => r.indicators?.low);
+    const volumes = records.map(r => r.indicators?.volume);
+
+    if (tsChart) tsChart.destroy();
+    tsChart = new Chart(document.getElementById('ts-chart'), {
+        type: currentChartType,
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Close',
+                    data: closes,
+                    borderColor: '#58a6ff',
+                    backgroundColor: currentChartType === 'line'
+                        ? 'rgba(88,166,255,0.1)'
+                        : 'rgba(88,166,255,0.6)',
+                    fill: currentChartType === 'line',
+                    tension: 0.3,
+                    pointRadius: records.length > 60 ? 0 : 3,
+                    borderWidth: 2
+                },
+                {
+                    label: 'High',
+                    data: highs,
+                    borderColor: '#7ee787',
+                    backgroundColor: 'transparent',
+                    tension: 0.3,
+                    pointRadius: 0,
+                    borderWidth: 1,
+                    borderDash: [4,4]
+                },
+                {
+                    label: 'Low',
+                    data: lows,
+                    borderColor: '#f85149',
+                    backgroundColor: 'transparent',
+                    tension: 0.3,
+                    pointRadius: 0,
+                    borderWidth: 1,
+                    borderDash: [4,4]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: '#8b949e', boxWidth: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2)}`
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color: '#8b949e', maxTicksLimit: 10 }, grid: { color: '#21262d' } },
+                y: {
+                    ticks: { color: '#8b949e', callback: v => `$${v.toFixed(2)}` },
+                    grid: { color: '#21262d' }
+                }
+            }
+        }
+    });
+
+    // ── Volume Chart ──
+    if (tsVolumeChart) tsVolumeChart.destroy();
+    tsVolumeChart = new Chart(document.getElementById('ts-volume-chart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Volume',
+                data: volumes,
+                backgroundColor: 'rgba(88,166,255,0.4)',
+                borderColor: '#58a6ff',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#8b949e', maxTicksLimit: 10 }, grid: { color: '#21262d' } },
+                y: {
+                    ticks: {
+                        color: '#8b949e',
+                        callback: v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v.toLocaleString()
+                    },
+                    grid: { color: '#21262d' }
+                }
+            }
+        }
+    });
+
+    // ── Data Table ──
+    const tbody = document.getElementById('ts-table');
+    if (!records.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">No data found for selected range</td></tr>';
+    } else {
+        tbody.innerHTML = [...records].reverse().map(r => {
+            const open  = r.indicators?.open;
+            const close = r.indicators?.close;
+            const change = open && close ? ((close - open) / open * 100) : null;
+            const changeHtml = change !== null
+                ? `<span style="color:${change >= 0 ? '#7ee787' : '#f85149'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>`
+                : '—';
+            return `<tr>
+                <td>${formatDate(r.dataTimestamp)}</td>
+                <td>$${open?.toFixed(2) || '—'}</td>
+                <td><strong>$${close?.toFixed(2) || '—'}</strong></td>
+                <td style="color:#7ee787;">$${r.indicators?.high?.toFixed(2) || '—'}</td>
+                <td style="color:#f85149;">$${r.indicators?.low?.toFixed(2) || '—'}</td>
+                <td style="color:#8b949e;">${r.indicators?.volume?.toLocaleString() || '—'}</td>
+                <td>${changeHtml}</td>
+            </tr>`;
+        }).join('');
+    }
+}
+
+// ══════════════════════════════════════════════
+// SOURCES
+// ══════════════════════════════════════════════
+async function loadSources() {
+    const data = await api('/api/sources');
+    allSources = data.data || [];
+    const tbody = document.getElementById('sources-table');
+    if (!allSources.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No data sources found</td></tr>';
+        return;
+    }
+    // Fetch full details for each source to get apiEndpoint
+    const fullSources = await Promise.all(
+        allSources.map(s => api(`/api/sources/${s.dataSourceId}`).then(r => r.data || s))
+    );
+
+    // Check if each source has data by trying multiple instruments
+    const allInstrumentsForCheck = await api('/api/instruments?limit=200');
+    const instrumentsForCheck = allInstrumentsForCheck.data || [];
+
+    const sourcesWithCounts = await Promise.all(
+        fullSources.map(async s => {
+            s.hasData = false;
+            // Try each instrument until we find one with data for this source
+            for (const inst of instrumentsForCheck) {
+                try {
+                    const ts = await api(`/api/timeseries?instrumentId=${inst.assetId}&dataSourceId=${s.dataSourceId}&limit=1`);
+                    if ((ts.count || 0) > 0) {
+                        s.hasData = true;
+                        break;
+                    }
+                } catch(e) {
+                    continue;
+                }
+            }
+            return s;
+        })
+    );
+
+    tbody.innerHTML = sourcesWithCounts.map(s => `
+        <tr>
+            <td>
+                <strong>${s.providerName}</strong>
+                <span style="margin-left:8px;padding:2px 8px;border-radius:10px;font-size:11px;
+                    background:${s.hasData ? '#2d3b1f' : '#3a1a1a'};
+                    color:${s.hasData ? '#7ee787' : '#f85149'};">
+                    ${s.hasData ? '✅ Active' : '⚠ No data'}
+                </span>
+            </td>
+            <td>${s.providerType}</td>
+            <td style="font-size:12px; color:#8b949e;">${s.apiEndpoint || 'N/A'}</td>
+            <td style="color:#8b949e;">${s.description}</td>
+            <td style="font-family:monospace; font-size:11px; color:#8b949e;">${s.dataSourceId}</td>
+        </tr>`).join('');
+}
+
+async function submitSourceModal() {
+    const body = {
+        providerName: document.getElementById('s-name').value,
+        providerType: document.getElementById('s-type').value,
+        apiEndpoint: document.getElementById('s-endpoint').value,
+        description: document.getElementById('s-desc').value
+    };
+    if (!body.providerName || !body.apiEndpoint) return alert('Provider Name and Endpoint are required!');
+    const res = await api('/ingest/register-source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    closeModal('modal-add-source');
+    if (res.status === 'success') {
+        showAlert('sources-alert', `✅ Source ${body.providerName} added!`);
+        loadSources();
+    } else {
+        showAlert('sources-alert', `❌ Error: ${JSON.stringify(res)}`, 'error');
+    }
+}
+
+// ══════════════════════════════════════════════
+// PROVENANCE
+// ══════════════════════════════════════════════
+async function loadProvSelects() {
+    const inst = await api('/api/instruments?limit=200');
+    allInstruments = inst.data || [];
+    const sel = document.getElementById('prov-instrument');
+    sel.innerHTML = '<option value="">Select instrument...</option>' +
+        allInstruments.map(i => `<option value="${i.assetId}">${i.symbol} - ${i.name}</option>`).join('');
+}
+
+async function loadProvenance() {
+    const id = document.getElementById('prov-instrument').value;
+    if (!id) return alert('Please select an instrument!');
+    const data = await api(`/api/provenance/${id}`);
+    const records = data.data || [];
+    document.getElementById('prov-card').style.display = 'block';
+    document.getElementById('prov-count').textContent = `${records.length} records`;
+    const list = document.getElementById('prov-list');
+    if (!records.length) {
+        list.innerHTML = '<div class="empty">No provenance records found</div>';
+        return;
+    }
+    list.innerHTML = records.map(p => `
+        <div class="prov-item">
+            <div>
+                <div class="prov-id">${p.provenanceId}</div>
+                <div class="prov-meta" style="margin-top:6px;">
+                    <span style="background:#1f3d6e;color:#58a6ff;padding:2px 8px;border-radius:10px;font-size:11px;margin-right:6px;">${p.providerName || p.sourceId}</span>
+                    <span style="background:#2d3b1f;color:#7ee787;padding:2px 8px;border-radius:10px;font-size:11px;margin-right:6px;">${p.providerType || ''}</span>
+                    <span style="background:#3d2b1f;color:#f0883e;padding:2px 8px;border-radius:10px;font-size:11px;margin-right:6px;">${p.sourceType}</span>
+                    <span style="color:#8b949e;font-size:11px;">Method: ${p.ingestionMethod}</span>
+                </div>
+                <div class="prov-meta" style="margin-top:4px;">📦 Total ingestion events: <strong>${p.totalRecords || 1}</strong></div>
+                <div class="prov-hash" style="margin-top:4px;">SHA256: ${p.rawDataHash?.substring(0, 48)}...</div>
+            </div>
+            <div style="color:#8b949e; font-size:12px;text-align:right;">
+                <div>Last ingested</div>
+                <div style="color:#f0f6fc;">${p.ingestTime?.split('T')[0]}</div>
+            </div>
+        </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// MCP
+// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// MCP TOOLS LIST
+// ══════════════════════════════════════════════
+async function loadMcpTools() {
+    const data = await api('/mcp/tools');
+    const tools = data.tools || [];
+    const list = document.getElementById('mcp-tools-list');
+    list.innerHTML = tools.map(t => `
+        <div style="padding:10px 14px;border-bottom:1px solid #21262d;">
+            <div style="color:#f0883e;font-family:monospace;font-size:12px;">${t.name}</div>
+            <div style="color:#8b949e;font-size:11px;margin-top:2px;">${t.description}</div>
+        </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// AI CHAT
+// ══════════════════════════════════════════════
+let chatHistory = [];
+let mcpToolsList = [];
+
+function setPrompt(text) {
+    document.getElementById('chat-input').value = text;
+    document.getElementById('chat-input').focus();
+}
+
+function clearChat() {
+    chatHistory = [];
+    const msgs = document.getElementById('chat-messages');
+    msgs.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div class="chat-avatar avatar-ai">🤖</div>
+            <div class="bubble" style="background:#1f2937;border-radius:12px;border-top-left-radius:4px;padding:14px 16px;">
+                <div style="color:#f0f6fc;font-size:14px;line-height:1.6;">
+                    Chat cleared! Ask me anything about your financial data.
+                </div>
+            </div>
+        </div>`;
+    document.getElementById('tool-log').innerHTML = '<div style="color:#30363d;">No tool calls yet...</div>';
+}
+
+function appendMessage(role, text, toolCalls = []) {
+    const msgs = document.getElementById('chat-messages');
+    const isUser = role === 'user';
+
+    let toolBadges = '';
+    if (toolCalls.length > 0) {
+        toolBadges = '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px;">' +
+            toolCalls.map(t => `<span class="tool-call-badge">🔧 ${t}</span>`).join('') +
+            '</div>';
+    }
+
+    const bubble = isUser
+        ? `<div class="chat-msg-user">
+               <div class="chat-avatar avatar-user">👤</div>
+               <div class="bubble">${escapeHtml(text)}</div>
+           </div>`
+        : `<div class="chat-msg-ai">
+               <div class="chat-avatar avatar-ai">🤖</div>
+               <div class="bubble">${formatAiText(text)}${toolBadges}</div>
+           </div>`;
+
+    msgs.insertAdjacentHTML('beforeend', bubble);
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+    const msgs = document.getElementById('chat-messages');
+    msgs.insertAdjacentHTML('beforeend', `
+        <div class="chat-msg-ai" id="typing-indicator">
+            <div class="chat-avatar avatar-ai">🤖</div>
+            <div class="bubble">
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        </div>`);
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+function hideTyping() {
+    const el = document.getElementById('typing-indicator');
+    if (el) el.remove();
+}
+
+function escapeHtml(text) {
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatAiText(text) {
+    // Convert markdown-like formatting to HTML
+    return escapeHtml(text)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code style="background:#0d1117;padding:2px 5px;border-radius:4px;font-family:monospace;color:#f0883e;">$1</code>')
+        .replace(/\n/g, '<br>')
+        .replace(/^[-•] (.+)/gm, '<li style="margin-left:16px;">$1</li>');
+}
+
+function logToolCall(toolName, args, result) {
+    const log = document.getElementById('tool-log');
+    const time = new Date().toLocaleTimeString();
+    const entry = `<div style="margin-bottom:8px;padding:6px;background:#0d1117;border-radius:4px;">
+        <div style="color:#58a6ff;">[${time}] ${toolName}</div>
+        <div style="color:#8b949e;">args: ${JSON.stringify(args).substring(0,60)}...</div>
+        <div style="color:#7ee787;">→ ${result}</div>
+    </div>`;
+    if (log.children[0]?.style.color === 'rgb(48, 54, 61)') log.innerHTML = '';
+    log.insertAdjacentHTML('afterbegin', entry);
+}
+
+async function callMcpToolSilent(toolName, args) {
+    const result = await api('/mcp/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tool_name: toolName, arguments: args })
+    });
+    return result;
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+    const userMessage = input.value.trim();
+
+    if (!userMessage) return;
+
+    // Disable input while processing
+    input.value = '';
+    input.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = '...';
+
+    // Show user message
+    appendMessage('user', userMessage);
+    chatHistory.push({ role: 'user', content: userMessage });
+
+    // Show typing indicator
+    showTyping();
+
+    try {
+        // Build system prompt with available tools info
+        const toolsInfo = mcpToolsList.map(t => `- ${t.name}: ${t.description}`).join('\n');
+
+        const systemPrompt = `You are an AI financial assistant for Acme Ltd's Financial Data Warehouse.
+You have access to real financial market data through MCP tools.
+
+AVAILABLE MCP TOOLS:
+${toolsInfo}
+
+INSTRUCTIONS:
+1. When the user asks about financial data, you MUST call the appropriate MCP tool FIRST
+2. Use the tool results to give accurate, data-driven answers
+3. Always base your answers on the actual data from the warehouse
+4. Be concise but informative
+5. Format numbers nicely (e.g. $428.35, +9.13%)
+6. If asked about trends, use analyze_trend tool
+7. If asked about statistics, use compute_statistics tool
+8. If asked to list instruments, use list_instruments tool
+9. For comparisons, use compare_instruments tool
+10. Always mention the data source and quality in your answer
+
+IMPORTANT: You have real market data from Yahoo Finance (verified) and simulated data.
+Respond in a helpful, professional tone suitable for financial analysis.`;
+
+        // Define tools for Claude
+        const tools = mcpToolsList.map(t => ({
+            name: t.name,
+            description: t.description,
+            input_schema: t.input_schema || {
+                type: 'object',
+                properties: {},
+                required: []
+            }
+        }));
+
+        // First API call to Claude
+        let response = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                system: systemPrompt,
+                messages: chatHistory,
+                tools: tools
+            })
+        });
+
+        let data = await response.json();
+
+        // Handle tool use loop
+        let toolCallNames = [];
+        let loopCount = 0;
+
+        while (data.stop_reason === 'tool_use' && loopCount < 5) {
+            loopCount++;
+            const toolUseBlocks = data.content.filter(b => b.type === 'tool_use');
+            const toolResults = [];
+
+            for (const toolUse of toolUseBlocks) {
+                toolCallNames.push(toolUse.name);
+                const mcpResult = await callMcpToolSilent(toolUse.name, toolUse.input);
+                const resultStr = JSON.stringify(mcpResult.result || mcpResult);
+                logToolCall(toolUse.name, toolUse.input, resultStr.substring(0, 80));
+
+                toolResults.push({
+                    type: 'tool_result',
+                    tool_use_id: toolUse.id,
+                    content: resultStr
+                });
+            }
+
+            // Add assistant response and tool results to history
+            chatHistory.push({ role: 'assistant', content: data.content });
+            chatHistory.push({ role: 'user', content: toolResults });
+
+            // Call Claude again with tool results
+            response = await fetch('/api/ai/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    system: systemPrompt,
+                    messages: chatHistory,
+                    tools: tools
+                })
+            });
+            data = await response.json();
+        }
+
+        // Extract final text response
+        const textContent = (data.content || [])
+            .filter(b => b.type === 'text')
+            .map(b => b.text)
+            .join('\n');
+
+        hideTyping();
+
+        if (textContent) {
+            appendMessage('assistant', textContent, toolCallNames);
+            chatHistory.push({ role: 'assistant', content: data.content || [{ type: 'text', text: textContent }] });
+        } else {
+            appendMessage('assistant', 'I encountered an issue processing your request. Please try again.');
+        }
+
+    } catch (err) {
+        hideTyping();
+        appendMessage('assistant', `Error: ${err.message}. Make sure the ANTHROPIC_API_KEY is set in your .env file.`);
+        console.error('Chat error:', err);
+    }
+
+    // Re-enable input
+    input.disabled = false;
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send ➤';
+    input.focus();
+}
+
+// ══════════════════════════════════════════════
+// INGEST PAGE
+// ══════════════════════════════════════════════
+async function loadIngestSelects() {
+    const inst = await api('/api/instruments?limit=200');
+    const src = await api('/api/sources');
+    allInstruments = inst.data || [];
+    allSources = src.data || [];
+
+    const iSel = document.getElementById('ing-ts-instrument');
+    iSel.innerHTML = '<option value="">Select instrument...</option>' +
+        allInstruments.map(i => `<option value="${i.assetId}">${i.symbol} - ${i.name}</option>`).join('');
+
+    const sSel = document.getElementById('ing-ts-source');
+    sSel.innerHTML = '<option value="">Select source...</option>' +
+        allSources.map(s => `<option value="${s.dataSourceId}">${s.providerName}</option>`).join('');
+}
+
+async function addInstrument() {
+    const body = {
+        symbol: document.getElementById('ing-symbol').value,
+        name: document.getElementById('ing-name').value,
+        description: document.getElementById('ing-desc').value || 'N/A',
+        instrumentClass: document.getElementById('ing-class').value,
+        region: document.getElementById('ing-region').value || 'US',
+        currency: document.getElementById('ing-currency').value || 'USD'
+    };
+    if (!body.symbol || !body.name) return showAlert('ingest-alert', '❌ Symbol and Name are required!', 'error');
+    const res = await api('/ingest/register-instrument', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (res.status === 'success') {
+        showAlert('ingest-alert', `✅ Instrument ${body.symbol} added! ID: ${res.data.instrumentId}`);
+        loadIngestSelects();
+    } else {
+        showAlert('ingest-alert', `❌ Error: ${JSON.stringify(res)}`, 'error');
+    }
+}
+
+async function addTimeSeries() {
+    const instId = document.getElementById('ing-ts-instrument').value;
+    const srcId = document.getElementById('ing-ts-source').value;
+    const ts = document.getElementById('ing-ts-timestamp').value;
+    if (!instId || !srcId || !ts) return showAlert('ingest-alert', '❌ Instrument, Source, and Timestamp are required!', 'error');
+
+    const body = {
+        instrumentId: instId,
+        dataSourceId: srcId,
+        dataTimestamp: ts,
+        indicators: {
+            open: parseFloat(document.getElementById('ing-ts-open').value) || 0,
+            close: parseFloat(document.getElementById('ing-ts-close').value) || 0,
+            high: parseFloat(document.getElementById('ing-ts-high').value) || 0,
+            low: parseFloat(document.getElementById('ing-ts-low').value) || 0,
+            volume: parseFloat(document.getElementById('ing-ts-volume').value) || 0
+        }
+    };
+    const res = await api('/ingest/timeseries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (res.status === 'success') {
+        showAlert('ingest-alert', `✅ Price data added successfully!`);
+    } else {
+        showAlert('ingest-alert', `❌ Error: ${JSON.stringify(res)}`, 'error');
+    }
+}
+
+// ── THEME ──
+function setTheme(mode) {
+    const body = document.body;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Remove all theme classes
+    body.classList.remove('light-mode', 'dark-mode');
+
+    if (mode === 'light') {
+        body.classList.add('light-mode');
+    } else if (mode === 'system') {
+        if (!prefersDark) body.classList.add('light-mode');
+    }
+    // dark = default, no class needed
+
+    // Save preference
+    localStorage.setItem('theme', mode);
+
+    // Update button styles
+    ['dark','light','system'].forEach(m => {
+        const btn = document.getElementById('btn-' + m);
+        if (btn) {
+            btn.style.background = m === mode ? 'var(--accent-blue)' : 'var(--bg-hover)';
+            btn.style.color      = m === mode ? '#fff' : 'var(--text-muted)';
+            btn.style.borderColor= m === mode ? 'var(--accent-blue)' : 'var(--border)';
+        }
+    });
+}
+
+function initTheme() {
+    const saved = localStorage.getItem('theme') || 'dark';
+    setTheme(saved);
+}
+
+// ── INIT ──
+initTheme();
+loadDashboard();
+
+// Pre-load MCP tools for AI chat
+api('/mcp/tools').then(data => {
+    mcpToolsList = data.tools || [];
+});
+</script>
+</body>
+</html>
