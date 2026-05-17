@@ -983,6 +983,42 @@
 
         <div id="ingest-alert"></div>
 
+        <!-- Fetch Real Data from Yahoo Finance -->
+        <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+                <h3>📡 Fetch Real Data from Yahoo Finance</h3>
+                <span style="color:#8b949e;font-size:12px;">Automatically fetch 90 days of real price data</span>
+            </div>
+            <div style="padding:20px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+                <div style="flex:1;">
+                    <label style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:6px;">SELECT INSTRUMENT</label>
+                    <select id="fetch-instrument" style="width:100%">
+                        <option value="">Select instrument...</option>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:6px;">YAHOO TICKER (if different)</label>
+                    <input type="text" id="fetch-ticker" placeholder="e.g. AMZN, BTC-USD, GC=F" style="width:100%">
+                </div>
+                <div>
+                    <label style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:6px;">DAYS</label>
+                    <select id="fetch-days" style="width:100px;">
+                        <option value="30">30 days</option>
+                        <option value="90" selected>90 days</option>
+                        <option value="180">180 days</option>
+                        <option value="365">1 year</option>
+                    </select>
+                </div>
+                <button class="btn btn-blue" onclick="fetchFromYahoo()" id="fetch-btn">
+                    📡 Fetch & Ingest
+                </button>
+            </div>
+            <div id="fetch-progress" style="display:none;padding:0 20px 16px;">
+                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:monospace;font-size:12px;color:var(--accent-green);" id="fetch-log">
+                </div>
+            </div>
+        </div>
+
         <div class="two-col">
             <!-- Add Instrument -->
             <div class="card">
@@ -1464,9 +1500,32 @@ async function viewInstrumentDetails(id, symbol) {
     openModal('modal-instrument-detail');
 }
 
-function goToChart(assetId) {
-    document.getElementById('ts-instrument').value = assetId;
+async function goToChart(assetId) {
     showPage('timeseries');
+
+    // Wait for selects to populate
+    await loadTsSelects();
+
+    // Set the instrument
+    document.getElementById('ts-instrument').value = assetId;
+
+    // Auto-select Yahoo Finance if available, else first source
+    const srcSel = document.getElementById('ts-source');
+    for (let opt of srcSel.options) {
+        if (opt.text.toLowerCase().includes('yahoo')) {
+            srcSel.value = opt.value;
+            break;
+        }
+    }
+    if (!srcSel.value && srcSel.options.length > 1) {
+        srcSel.selectedIndex = 1;
+    }
+
+    // Set 3 month date range
+    setDateRange(90);
+
+    // Auto-load the chart
+    await loadTimeSeries();
 }
 
 async function submitInstrumentModal() {
@@ -1514,10 +1573,12 @@ function setDateRange(days) {
     if (days) {
         start.setDate(start.getDate() - days);
         document.getElementById('ts-start').value = start.toISOString().split('T')[0];
+        document.getElementById('ts-end').value = end.toISOString().split('T')[0];
     } else {
+        // All — clear BOTH dates to remove filter completely
         document.getElementById('ts-start').value = '';
+        document.getElementById('ts-end').value = '';
     }
-    document.getElementById('ts-end').value = end.toISOString().split('T')[0];
 }
 
 function setChartType(type) {
@@ -1551,10 +1612,12 @@ function onTsInstrumentChange() {
 }
 
 function formatDate(ts) {
-    // Handle multiple timestamp formats:
-    // - 'Fri, 08 May 2026 04:00:00 GMT' (Flask default)
-    // - '2026-05-08T00:00:00' (ISO format)
     if (!ts) return '—';
+    // Just take the date part directly from the string (first 10 chars)
+    // This avoids timezone conversion issues
+    if (typeof ts === 'string' && ts.length >= 10) {
+        return ts.substring(0, 10);
+    }
     try {
         const d = new Date(ts);
         if (!isNaN(d)) {
@@ -2134,13 +2197,76 @@ async function loadIngestSelects() {
     allInstruments = inst.data || [];
     allSources = src.data || [];
 
-    const iSel = document.getElementById('ing-ts-instrument');
-    iSel.innerHTML = '<option value="">Select instrument...</option>' +
+    const instOptions = '<option value="">Select instrument...</option>' +
         allInstruments.map(i => `<option value="${i.assetId}">${i.symbol} - ${i.name}</option>`).join('');
+
+    document.getElementById('ing-ts-instrument').innerHTML = instOptions;
+    document.getElementById('fetch-instrument').innerHTML = instOptions;
 
     const sSel = document.getElementById('ing-ts-source');
     sSel.innerHTML = '<option value="">Select source...</option>' +
         allSources.map(s => `<option value="${s.dataSourceId}">${s.providerName}</option>`).join('');
+}
+
+async function fetchFromYahoo() {
+    const instId  = document.getElementById('fetch-instrument').value;
+    const ticker  = document.getElementById('fetch-ticker').value.trim();
+    const days    = document.getElementById('fetch-days').value;
+    const btn     = document.getElementById('fetch-btn');
+    const log     = document.getElementById('fetch-log');
+    const progress = document.getElementById('fetch-progress');
+
+    if (!instId) return showAlert('ingest-alert', '❌ Please select an instrument!', 'error');
+
+    // Find the instrument symbol to use as ticker if not specified
+    const inst = allInstruments.find(i => i.assetId === instId);
+    const useTicker = ticker || (inst ? inst.symbol : '');
+
+    if (!useTicker) return showAlert('ingest-alert', '❌ Please enter a Yahoo ticker symbol!', 'error');
+
+    // Find Yahoo Finance source ID
+    const sources = await api('/api/sources');
+    const yahooSrc = (sources.data || []).find(s => s.providerType === 'yahoo');
+    if (!yahooSrc) return showAlert('ingest-alert', '❌ Yahoo Finance source not registered!', 'error');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Fetching...';
+    progress.style.display = 'block';
+    log.textContent = `Fetching ${useTicker} from Yahoo Finance (${days} days)...\n`;
+
+    try {
+        // Call the backend to fetch from Yahoo Finance
+        const res = await fetch('/ingest/fetch-yahoo', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                instrumentId: instId,
+                dataSourceId: yahooSrc.dataSourceId,
+                ticker: useTicker,
+                days: parseInt(days)
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            log.textContent += `✓ Fetched ${data.fetched} days of data\n`;
+            log.textContent += `✓ Ingested ${data.ingested} records\n`;
+            log.textContent += `✓ Done! Go to Time Series to see the chart.`;
+            log.style.color = '#7ee787';
+            showAlert('ingest-alert', `✅ Successfully ingested ${data.ingested} records for ${useTicker}!`);
+        } else {
+            log.textContent += `✗ Error: ${data.error}`;
+            log.style.color = '#f85149';
+            showAlert('ingest-alert', `❌ ${data.error}`, 'error');
+        }
+    } catch(e) {
+        log.textContent += `✗ Error: ${e.message}`;
+        log.style.color = '#f85149';
+    }
+
+    btn.disabled = false;
+    btn.textContent = '📡 Fetch & Ingest';
 }
 
 async function addInstrument() {

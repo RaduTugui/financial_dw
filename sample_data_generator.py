@@ -110,41 +110,47 @@ def register_data_sources():
         }
     ]
 
+    # Check existing FIRST - never create duplicates
     registered = {}
+    existing = requests.get(f"{BASE_URL}/api/sources").json()
+    for s in existing.get('data', []):
+        ptype = s.get('providerType')
+        if ptype and ptype not in registered:
+            registered[ptype] = s['dataSourceId']
+            print(f"  ↩ Already exists: {s['providerName']} → {s['dataSourceId']}")
+
+    # Only register sources not yet in DB
     for source in sources:
+        if source['providerType'] in registered:
+            continue
         r = requests.post(f"{BASE_URL}/ingest/register-source", json=source)
         if r.status_code == 201:
             data = r.json()['data']
             registered[source['providerType']] = data['dataSourceId']
-            print(f"  ✓ {source['providerName']:25s} → {data['dataSourceId']}")
-        else:
-            # Already exists - find it
-            all_src = requests.get(f"{BASE_URL}/api/sources").json()
-            for s in all_src.get('data', []):
-                if s['providerType'] == source['providerType']:
-                    registered[source['providerType']] = s['dataSourceId']
-                    print(f"  ↩ Exists: {source['providerName']:20s} → {s['dataSourceId']}")
-                    break
+            print(f"  ✓ New: {source['providerName']} → {data['dataSourceId']}")
     return registered
 
 def register_instruments():
     """Register all financial instruments"""
+    # Check existing FIRST - never create duplicates
     registered = {}
+    existing = requests.get(f"{BASE_URL}/api/instruments?limit=200").json()
+    for i in existing.get('data', []):
+        if i['symbol'] not in registered:
+            registered[i['symbol']] = i['assetId']
+            print(f"  ↩ Already exists: {i['symbol']} → {i['assetId']}")
+
+    # Only register instruments not yet in DB
     for inst in INSTRUMENTS:
+        if inst['symbol'] in registered:
+            continue
         payload = {k: inst[k] for k in ["symbol","name","description","instrumentClass","region","currency"]}
         payload["attributes"] = inst.get("attributes", {})
         r = requests.post(f"{BASE_URL}/ingest/register-instrument", json=payload)
         if r.status_code == 201:
             data = r.json()['data']
             registered[inst["symbol"]] = data['instrumentId']
-            print(f"  ✓ {inst['symbol']:12s} → {data['instrumentId']}")
-        else:
-            all_inst = requests.get(f"{BASE_URL}/api/instruments?limit=200").json()
-            for i in all_inst.get('data', []):
-                if i['symbol'] == inst['symbol']:
-                    registered[inst["symbol"]] = i['assetId']
-                    print(f"  ↩ Exists: {inst['symbol']:12s} → {i['assetId']}")
-                    break
+            print(f"  ✓ New: {inst['symbol']} → {data['instrumentId']}")
     return registered
 
 # ══════════════════════════════════════════════════════════
