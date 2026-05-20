@@ -70,6 +70,7 @@ INSTRUMENTS = [
     {"symbol": "MSFT",   "name": "Microsoft Corporation","description": "Cloud computing and software company",       "instrumentClass": "stock",     "region": "US",     "currency": "USD", "yahoo_ticker": "MSFT",    "attributes": {"sector": "Technology", "exchange": "NASDAQ"}},
     {"symbol": "AAPL",   "name": "Apple Inc",            "description": "Consumer electronics and software company",  "instrumentClass": "stock",     "region": "US",     "currency": "USD", "yahoo_ticker": "AAPL",    "attributes": {"sector": "Technology", "exchange": "NASDAQ"}},
     {"symbol": "GOOGL",  "name": "Alphabet Inc",         "description": "Search and cloud computing company",         "instrumentClass": "stock",     "region": "US",     "currency": "USD", "yahoo_ticker": "GOOGL",   "attributes": {"sector": "Technology", "exchange": "NASDAQ"}},
+    {"symbol": "AMZN",   "name": "Amazon Inc",            "description": "E-commerce and cloud computing company",      "instrumentClass": "stock",     "region": "US",     "currency": "USD", "yahoo_ticker": "AMZN",    "attributes": {"sector": "Technology", "exchange": "NASDAQ"}},
     {"symbol": "BTC-USD","name": "Bitcoin",              "description": "Decentralized digital currency",             "instrumentClass": "crypto",    "region": "Global", "currency": "USD", "yahoo_ticker": "BTC-USD", "attributes": {"blockchain": "Bitcoin"}},
     {"symbol": "ETH-USD","name": "Ethereum",             "description": "Smart contract platform",                    "instrumentClass": "crypto",    "region": "Global", "currency": "USD", "yahoo_ticker": "ETH-USD", "attributes": {"blockchain": "Ethereum"}},
     {"symbol": "GOLD",   "name": "Gold",                 "description": "Gold spot price - London Bullion Market",    "instrumentClass": "commodity", "region": "Global", "currency": "USD", "yahoo_ticker": "GC=F",    "attributes": {"type": "precious_metal", "unit": "troy_ounce"}},
@@ -334,7 +335,7 @@ def fetch_yahoo_finance(ticker, days=90):
 # ══════════════════════════════════════════════════════════
 
 BASE_PRICES = {
-    "TSLA": 242.0, "MSFT": 370.0, "AAPL": 178.0, "GOOGL": 175.0,
+    "TSLA": 242.0, "MSFT": 370.0, "AAPL": 178.0, "GOOGL": 175.0, "AMZN": 185.0,
     "BTC-USD": 42000.0, "ETH-USD": 2200.0,
     "GOLD": 1950.0, "SILVER": 23.0, "US10Y": 4.5,
 }
@@ -372,6 +373,33 @@ def generate_simulated_data(symbol, days=90):
 def ingest_records(instrument_id, source_id, records):
     if not records:
         return 0
+
+    # Get existing timestamps for this instrument+source to avoid duplicates
+    try:
+        existing = requests.get(
+            f"{BASE_URL}/api/timeseries",
+            params={"instrumentId": instrument_id, "dataSourceId": source_id, "limit": 1000},
+            timeout=10
+        ).json()
+        existing_dates = set()
+        for r in existing.get('data', []):
+            ts = r.get('dataTimestamp', '')
+            existing_dates.add(ts[:10])  # just the date part YYYY-MM-DD
+    except Exception:
+        existing_dates = set()
+
+    # Filter out records that already exist
+    new_records = [
+        r for r in records
+        if r["dataTimestamp"][:10] not in existing_dates
+    ]
+
+    if not new_records:
+        print(f"    ↩ All dates already exist, skipping")
+        return 0
+
+    print(f"    → {len(new_records)} new records (skipping {len(records) - len(new_records)} existing)")
+
     bulk = [
         {
             "instrumentId":  instrument_id,
@@ -380,7 +408,7 @@ def ingest_records(instrument_id, source_id, records):
             "indicators":    r["indicators"],
             "dataQuality":   r.get("dataQuality", "verified")
         }
-        for r in records
+        for r in new_records
     ]
     resp = requests.post(
         f"{BASE_URL}/ingest/bulk-timeseries",
