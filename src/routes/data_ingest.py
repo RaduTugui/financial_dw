@@ -14,6 +14,41 @@ from typing import List, Dict, Any
 
 ingest_bp = Blueprint('ingest', __name__)
 
+import threading
+import time
+
+# ── Dead Letter Queue (failed ingestion records) ──────────────
+_dead_letter_queue = []
+_dlq_lock = threading.Lock()
+
+
+def _add_to_dlq(record, error):
+    """Add failed record to dead letter queue for later retry"""
+    with _dlq_lock:
+        _dead_letter_queue.append({
+            'record': record,
+            'error': str(error),
+            'failed_at': datetime.utcnow().isoformat(),
+            'retries': 0
+        })
+
+
+def _retry_with_backoff(fn, max_retries=3, backoff=1.0):
+    """Retry a function with exponential backoff"""
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                time.sleep(backoff * (2 ** attempt))
+    raise last_error
+
+
+# ── Concurrent ingestion lock ──────────────────────────────────
+_ingestion_lock = threading.Lock()
+
 
 def _normalize_timestamp(ts):
     """Parse timestamp string and normalize to UTC naive datetime"""
@@ -471,3 +506,36 @@ def fetch_from_yahoo():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# DEAD LETTER QUEUE ENDPOINTS
+# ============================================================================
+
+@ingest_bp.route('/dlq', methods=['GET'])
+def get_dead_letter_queue():
+    """View failed ingestion records"""
+    with _dlq_lock:
+        return jsonify({
+            'status': 'success',
+            'count': len(_dead_letter_queue),
+            'data': _dead_letter_queue
+        }), 200
+
+
+@ingest_bp.route('/dlq/retry', methods=['POST'])
+def retry_dead_letter_queue():
+    """Retry all failed records in the dead letter queue"""
+    with _dlq_lock:
+        if not _dead_letter_queue:
+            return jsonify({'message': 'Dead letter queue is empty'}), 200
+        records = [item['record'] for item in _dead_letter_queue]
+        _dead_letter_queue.clear()
+
+    # Re-attempt ingestion
+    result = TimeSeriesService.bulk_insert_time_series(records)
+    return jsonify({
+        'status': 'success',
+        'retried': len(records),
+        'inserted': result.get('inserted', 0)
+    }), 200

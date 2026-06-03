@@ -1,6 +1,12 @@
 """
 AI Chat route - connects Claude AI to the MCP tools
-Implements UC4: LLM Integration
+Implements UC4: LLM Integration via MCP
+
+Hallucination Prevention:
+- Claude is explicitly instructed to ONLY use data from MCP tool results
+- System prompt forbids generic finance knowledge
+- All responses must cite which tool was called
+- If no tool data available, Claude must say so explicitly
 """
 
 from flask import Blueprint, request, jsonify
@@ -11,14 +17,34 @@ ai_bp = Blueprint('ai', __name__)
 
 CLAUDE_MODEL = 'claude-sonnet-4-5'
 
+# Strict system prompt to prevent hallucination
+ANTI_HALLUCINATION_SYSTEM = """You are an AI assistant for Acme Ltd's Financial Data Warehouse.
+
+CRITICAL RULES - YOU MUST FOLLOW THESE:
+1. You MUST call MCP tools to get data BEFORE answering any question about prices, trends, or statistics
+2. You MUST NEVER use your training knowledge about stock prices, crypto prices, or market data
+3. You MUST ONLY state facts that come directly from tool results
+4. If a tool returns no data, you MUST say "I don't have data for that in the warehouse"
+5. You MUST mention which tool you called and what it returned
+6. NEVER make up prices, percentages, or statistics
+7. If asked about current prices without tool data, say "Let me check the warehouse" and call get_latest_price
+
+GROUNDING REQUIREMENT:
+Every factual claim about financial data MUST be traceable to a specific tool call result.
+Prefix data-backed claims with the source, e.g.: "According to the warehouse data: TSLA closed at $428.35"
+
+AVAILABLE DATA:
+- Real verified data from Yahoo Finance (dataQuality: verified)
+- Simulated data for testing (dataQuality: simulated)
+- Always mention the data quality in your response
+"""
+
 @ai_bp.route('/chat', methods=['POST'])
 def ai_chat():
     """
     Proxy endpoint between the UI and Claude API.
-    The UI sends messages + tools, we forward to Claude and return the response.
-    Claude will decide which MCP tools to call, and the UI executes them.
+    Includes strict hallucination prevention via system prompt.
     """
-    # Read API key at request time (not import time) so .env is loaded
     api_key = os.getenv('ANTHROPIC_API_KEY', '')
 
     if not api_key:
@@ -34,7 +60,9 @@ def ai_chat():
         tools    = data.get('tools', [])
         system   = data.get('system', '')
 
-        # Call Claude API
+        # Combine user system prompt with anti-hallucination rules
+        full_system = ANTI_HALLUCINATION_SYSTEM + "\n\n" + system
+
         response = requests.post(
             'https://api.anthropic.com/v1/messages',
             headers={
@@ -45,7 +73,7 @@ def ai_chat():
             json={
                 'model':      CLAUDE_MODEL,
                 'max_tokens': 1024,
-                'system':     system,
+                'system':     full_system,
                 'messages':   messages,
                 'tools':      tools if tools else []
             },

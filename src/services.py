@@ -99,7 +99,19 @@ class TimeSeriesService:
             instrumentId=instrument_id, dataSourceId=data_source_id,
             dataTimestamp=data_timestamp, indicators=indicators
         )
-        db.time_series_data.insert_one(ts_data.to_dict())
+        doc = ts_data.to_dict()
+        # Year-based partitioning field for scalable data management
+        if isinstance(data_timestamp, datetime):
+            doc['year']  = data_timestamp.year
+            doc['month'] = data_timestamp.month
+        elif isinstance(data_timestamp, str):
+            try:
+                dt = datetime.fromisoformat(data_timestamp[:19])
+                doc['year']  = dt.year
+                doc['month'] = dt.month
+            except Exception:
+                pass
+        db.time_series_data.insert_one(doc)
         return {'seriesId': ts_data.seriesId, 'message': 'Time series data inserted'}
 
     @staticmethod
@@ -120,6 +132,19 @@ class TimeSeriesService:
         db = get_db()
         if not records:
             return {'inserted': 0, 'message': 'No records to insert'}
+        # Add year/month partition fields for scalable querying
+        for rec in records:
+            ts = rec.get('dataTimestamp')
+            if isinstance(ts, datetime):
+                rec['year']  = ts.year
+                rec['month'] = ts.month
+            elif isinstance(ts, str):
+                try:
+                    dt = datetime.fromisoformat(ts[:19])
+                    rec['year']  = dt.year
+                    rec['month'] = dt.month
+                except Exception:
+                    pass
         result = db.time_series_data.insert_many(records)
         return {'inserted': len(result.inserted_ids), 'message': f'Inserted {len(result.inserted_ids)} records'}
 

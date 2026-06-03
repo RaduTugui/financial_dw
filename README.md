@@ -1,6 +1,21 @@
 # Financial Data Warehouse — Acme Ltd
 
-A production-ready financial data warehouse platform built with **Flask** and **MongoDB**. Collects real market data from financial vendors, stores it with full temporal history, exposes it via a RESTful API, and provides an AI-powered assistant for natural language data exploration.
+A production-ready financial data warehouse platform built with **Flask** and **MongoDB**. Collects real market data from financial vendors, stores it with full temporal history, exposes it via a RESTful API, includes Apache Spark analytics and ML forecasting, and provides an AI-powered assistant for natural language data exploration.
+
+---
+
+## 🎬 Demo Video
+
+**[▶️ Watch Demo Video (3 minutes)](Demo.mp4)**
+
+> The demo video `Demo.mp4` is included in the root of this repository and covers:
+> - Live data ingestion from Yahoo Finance
+> - REST API (Q1-Q5) curl demonstrations  
+> - Time Series charts with real verified price data
+> - Data Provenance with SHA256 hashing
+> - Apache Spark analytics and ML forecasting
+> - AI Assistant powered by Claude + MCP (multi-step agentic behavior)
+> - Temporal database — soft delete and restore workflow
 
 ---
 
@@ -8,42 +23,20 @@ A production-ready financial data warehouse platform built with **Flask** and **
 
 ### Prerequisites
 - Python 3.8+
-- MongoDB 7.0+ running on `localhost:27017`
-- An Anthropic API key (for AI Assistant)
+- MongoDB 7.0+
+- Java 8+ (required for Apache Spark)
+- Anthropic API key (for AI Assistant)
 
-### Install MongoDB on Ubuntu 24.04
+### Install & Run
 ```bash
-curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-sudo apt update && sudo apt install -y mongodb-org
-sudo systemctl start mongod && sudo systemctl enable mongod
-```
-
-### Setup & Run
-```bash
-# 1. Clone the repository
 git clone https://github.com/RaduTugui/financial_dw.git
 cd financial_dw
-
-# 2. Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 3. Install dependencies
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# 4. Configure environment
-cp .env.example .env
-# Edit .env and add your API keys
-
-# 5. Start the Flask server (Terminal 1)
-python app.py
-
-# 6. Load sample data (Terminal 2)
-python sample_data_generator.py
-
-# 7. Open the dashboard
-# http://127.0.0.1:5000/ui
+cp .env.example .env   # add your API keys
+python app.py          # Terminal 1
+python sample_data_generator.py  # Terminal 2
+# Open http://127.0.0.1:5000/ui
 ```
 
 ---
@@ -52,230 +45,186 @@ python sample_data_generator.py
 
 ```
 financial_dw/
-│
-├── app.py                          # Flask application entry point
-├── requirements.txt                # Python dependencies
-├── sample_data_generator.py        # Data vendor integration & sample data
-├── .env.example                    # Environment variables template
-│
+├── Demo.mp4                        ← 3-minute demo video
+├── app.py                          ← Flask entry point
+├── sample_data_generator.py        ← Data ingestion pipeline
+├── pytest.ini                      ← Test configuration
+├── requirements.txt
+├── .env.example
 ├── templates/
-│   └── dashboard.html              # Full dashboard UI (dark/light/system theme)
-│
+│   └── dashboard.html              ← Full UI (dark/light/system theme)
+├── tests/
+│   └── test_dal.py                 ← 30+ unit tests
 └── src/
-    ├── database.py                 # MongoDB initialization & indexes
-    ├── models.py                   # Data models (8 dataclasses)
-    ├── services.py                 # Business logic (6 service classes)
-    │
+    ├── database.py                 ← MongoDB init + indexes
+    ├── models.py                   ← 8 temporal dataclasses
+    ├── services.py                 ← DAL service layer
     ├── routes/
-    │   ├── api.py                  # REST API endpoints (UC2: Q1-Q5)
-    │   ├── data_ingest.py          # Data ingestion endpoints (UC1)
-    │   ├── mcp_server.py           # MCP tools for LLM integration (UC4)
-    │   └── ai_chat.py              # Claude AI chat proxy (UC4)
-    │
+    │   ├── api.py                  ← REST API (Q1-Q5) + Spark trigger
+    │   ├── data_ingest.py          ← Ingest + retry + DLQ
+    │   ├── mcp_server.py           ← 10 MCP tools
+    │   └── ai_chat.py              ← Claude AI + anti-hallucination
+    ├── spark/
+    │   ├── spark_analytics.py      ← UC3: Spark aggregations (M6)
+    │   └── spark_ml_forecast.py    ← UC3: Spark ML forecasting (M7)
     └── utils/
-        └── error_handlers.py       # Flask error handlers
+        └── error_handlers.py
 ```
 
 ---
 
-## ⚙️ Configuration
+## 🧪 Unit Tests
 
-Copy `.env.example` to `.env` and fill in your keys:
+```bash
+pip install pytest
+pytest tests/ -v
+```
 
-```env
-MONGO_URI=mongodb://localhost:27017/financial_dw
-FLASK_DEBUG=True
-NASDAQ_API_KEY=your_nasdaq_key_here
-ANTHROPIC_API_KEY=your_anthropic_key_here
+| Test Class | Coverage |
+|-----------|---------|
+| `TestModels` | Data model creation & serialization |
+| `TestInstrumentService` | DAL CRUD operations |
+| `TestTimeSeriesService` | Time series insert/query/bulk |
+| `TestDataSourceService` | Source registration |
+| `TestProvenanceService` | SHA256 hashing & determinism |
+| `TestTemporalDatabase` | No in-place mutations, soft delete |
+| `TestIngestionPipeline` | Flask endpoints, API contracts |
+| `TestDataQuality` | Data normalization |
+
+---
+
+## ⚡ Apache Spark Analytics (UC3)
+
+### Install PySpark
+```bash
+pip install pyspark==3.5.0 --timeout 300
+```
+
+### Run Spark Aggregation (M6)
+```bash
+python src/spark/spark_analytics.py
+```
+Computes: min/max/avg/stddev, 7-day/30-day moving averages, VaR 95%/99%, Sharpe ratio
+
+### Run Spark ML Forecasting (M7)
+```bash
+python src/spark/spark_ml_forecast.py --symbol TSLA
+python src/spark/spark_ml_forecast.py --symbol AAPL
+```
+Models: Linear Regression + Random Forest with RMSE/R²/MAE metrics + next day forecast
+
+### Trigger via REST API
+```bash
+# Aggregation analytics
+curl -X POST http://localhost:5000/api/analytics/spark \
+  -H "Content-Type: application/json" \
+  -d '{"job_type": "analytics"}'
+
+# ML forecasting
+curl -X POST http://localhost:5000/api/analytics/spark \
+  -H "Content-Type: application/json" \
+  -d '{"job_type": "ml", "symbol": "TSLA"}'
 ```
 
 ---
 
-## 🗄️ Data Model
+## 📡 REST API (UC2: Q1-Q5)
 
-### Collections (8 total — all temporal)
+| Query | Endpoint |
+|-------|----------|
+| Q1 | `GET /api/instruments` |
+| Q2 | `GET /api/instruments/{id}` |
+| Q3 | `GET /api/sources` |
+| Q4 | `GET /api/sources/{id}` |
+| Q5 | `GET /api/timeseries?instrumentId=X&dataSourceId=Y&limit=10&offset=0` |
 
-| Collection | Description |
-|-----------|-------------|
-| `financial_instruments` | Master records for all assets |
-| `time_series_data` | Price/indicator data over time |
-| `data_sources` | Registered data providers |
-| `data_provenance` | Data lineage & integrity tracking |
-| `instrument_attributes` | Heterogeneous custom attributes |
-| `portfolios` | Portfolio definitions |
-| `portfolio_holdings` | Assets held in portfolios |
-| `analytics_jobs` | ML/analytics job tracking |
-
-### Temporal Database Design
-
-Every record contains:
+### Offset Pagination (Q5)
+```bash
+curl "http://localhost:5000/api/timeseries?instrumentId=X&dataSourceId=Y&limit=10&offset=0"
+curl "http://localhost:5000/api/timeseries?instrumentId=X&dataSourceId=Y&limit=10&offset=10"
 ```
-validFrom        → when this version became valid
-validTo          → null = still valid; date = expired
-isActive         → true = active; false = soft deleted
-deletionMarker   → "DELETED_2026-05-10_reason" if deleted
-transactionStart/End → when WE recorded/superseded it
+
+### All Endpoints
+```
+GET/POST /api/analytics/spark          Spark job trigger
+GET      /api/analytics/timeseries-stats  Statistics
+GET      /api/analytics/compare        Compare instruments
+DELETE   /api/instruments/{id}         Soft delete
+POST     /api/instruments/{id}/restore Restore
+GET      /api/instruments/inactive     Deleted instruments
+GET      /ingest/dlq                   Dead letter queue
+POST     /ingest/dlq/retry             Retry failed ingestions
+GET      /health                       Health check
+```
+
+---
+
+## 🗄️ Temporal Database Design
+
+Every record has:
+```
+validFrom / validTo    → valid time range
+isActive               → soft delete flag
+deletionMarker         → "DELETED_date_reason"
+year / month           → partition fields
 ```
 
 Rules enforced:
-- No UPDATE in place — changes create new versions
-- No DELETE in place — deletion sets isActive=false + deletionMarker
-- Full historical queries at any point in time
-
----
-
-## 📡 REST API
-
-### UC2 — Required Queries (Q1-Q5)
-
-| Query | Endpoint | Description |
-|-------|----------|-------------|
-| Q1 | `GET /api/instruments` | List all instruments (limited info) |
-| Q2 | `GET /api/instruments/{id}` | Full instrument details |
-| Q3 | `GET /api/sources` | List all data sources |
-| Q4 | `GET /api/sources/{id}` | Full data source details |
-| Q5 | `GET /api/timeseries?instrumentId=X&dataSourceId=Y` | Time series data |
-
-### Additional Endpoints
-
-```
-GET    /api/timeseries/latest              Latest price
-GET    /api/analytics/timeseries-stats    Statistics (min/max/avg/median)
-GET    /api/analytics/compare             Compare multiple instruments
-GET    /api/provenance/{id}               Data lineage
-GET    /api/instruments/inactive          List soft-deleted instruments
-POST   /api/instruments/{id}/restore      Restore soft-deleted instrument
-DELETE /api/instruments/{id}              Soft delete (temporal deletion)
-GET    /health                            Health check
-```
-
-### Example Requests
-
-```bash
-# List all instruments (Q1)
-curl http://localhost:5000/api/instruments
-
-# Get time series (Q5)
-curl "http://localhost:5000/api/timeseries?instrumentId=INST_XXX&dataSourceId=DS_YYY"
-
-# Soft delete
-curl -X DELETE http://localhost:5000/api/instruments/INST_XXX \
-  -H "Content-Type: application/json" \
-  -d '{"reason": "delisted"}'
-
-# Restore
-curl -X POST http://localhost:5000/api/instruments/INST_XXX/restore
-```
-
----
-
-## 📊 Data Vendors
-
-| Vendor | Type | Status | Data |
-|--------|------|--------|------|
-| **Yahoo Finance** | Live API | Active | Stocks, ETFs, Crypto, Commodities |
-| **Nasdaq Data Link** | REST API | Registered | Blocked by network WAF* |
-| **Simulated Data** | Internal | Active | Realistic OHLCV for testing |
-
-> *Nasdaq Data Link is fully implemented with authentication. Access is blocked by Incapsula WAF at ISP level — not a code issue. Yahoo Finance serves as the primary verified source.
-
-### Instruments
-
-| Symbol | Name | Class |
-|--------|------|-------|
-| TSLA | Tesla Inc | Stock |
-| MSFT | Microsoft Corporation | Stock |
-| AAPL | Apple Inc | Stock |
-| GOOGL | Alphabet Inc | Stock |
-| BTC-USD | Bitcoin | Crypto |
-| ETH-USD | Ethereum | Crypto |
-| GOLD | Gold | Commodity |
-| SILVER | Silver | Commodity |
-| US10Y | US 10-Year Treasury | Bond |
+- ❌ No UPDATE in place
+- ❌ No DELETE in place  
+- ✅ Changes = new version
+- ✅ Deletion = marker
 
 ---
 
 ## 🤖 AI Assistant (UC4)
 
-Powered by **Claude AI + MCP Protocol**. Answers questions grounded in real warehouse data.
-
-### MCP Tools Available
-
-| Tool | What it does |
-|------|-------------|
-| `list_instruments` | Browse available assets |
-| `get_instrument` | Get asset details |
-| `get_timeseries` | Fetch price history |
-| `get_latest_price` | Current price |
-| `compute_statistics` | Min/max/avg/median |
-| `analyze_trend` | Trend & volatility |
-| `compare_instruments` | Side-by-side comparison |
-| `list_data_sources` | Browse providers |
-| `get_data_source` | Provider details |
-| `get_provenance` | Data lineage |
-
-### Example Questions
-
-```
-"What instruments are available?"
-"What's the trend for TSLA?"
-"Compare MSFT and AAPL performance"
-"What are Bitcoin's statistics for the last month?"
-"Where does the data come from?"
-```
-
-Claude automatically chains multiple tools for complex questions (agentic behavior).
+10 MCP tools + Claude AI with strict anti-hallucination:
+- Only uses data from tool results
+- Never uses training knowledge for prices
+- Cites which tool was called for every claim
+- Multi-step agentic reasoning
 
 ---
 
-## 🖥️ Dashboard Pages
+## 📊 Data Vendors
 
-| Page | Features |
-|------|---------|
-| Dashboard | Stats overview, instruments list, data sources |
-| Instruments | Search, filter, Details modal, Chart, Delete/Restore |
-| Time Series | Price chart, volume chart, stats bar, date range picker |
-| Data Sources | Vendors with Active/No data status badges |
-| Provenance | Data lineage with SHA256 integrity hashes |
-| AI Assistant | Natural language chat + tool call log |
-| Ingest Data | Manually add instruments and price data |
+| Vendor | Status |
+|--------|--------|
+| Yahoo Finance | ✅ Active (real verified data) |
+| Nasdaq Data Link | ⚠ Registered (network blocked) |
+| Simulated Data | ✅ Active |
 
-**Themes:** 🌙 Dark / ☀️ Light / 💻 System (saved in localStorage)
-
-
-## 🛠️ Troubleshooting
-
-**MongoDB not connecting**
-```bash
-sudo systemctl start mongod
-```
-
-**Yahoo Finance data not loading**
-```bash
-pip install yfinance curl_cffi --upgrade
-```
-
-**AI Assistant not responding**
-- Verify `ANTHROPIC_API_KEY` is in `.env`
-- Restart Flask after editing `.env`
+### Ingestion Features
+- Idempotent (skips existing dates)
+- Retry with exponential backoff
+- Dead Letter Queue for failures
+- Concurrent ingestion safety
+- Year/month partitioning
 
 ---
 
-## 📦 Dependencies
+## ✅ Full Requirements Coverage
 
-```
-Flask==2.3.3
-Flask-CORS==4.0.0
-pymongo==4.5.0
-python-dotenv==1.0.0
-requests==2.31.0
-yfinance==1.3.0
-curl_cffi
-nasdaq-data-link
-```
+| # | Requirement | Status |
+|---|-------------|--------|
+| M1 | NoSQL database | ✅ MongoDB 7.0 |
+| M2 | Temporal/versioned data | ✅ validFrom/validTo/isActive/deletionMarker |
+| M3 | Provenance on every record | ✅ SHA256 + sourceId + timestamp |
+| M4 | External data ingestion | ✅ Yahoo Finance + Nasdaq + Simulated |
+| M5 | REST API Q1-Q5 | ✅ All implemented + pagination |
+| M6 | Spark aggregation workflow | ✅ spark_analytics.py |
+| M7 | Spark ML workflow | ✅ spark_ml_forecast.py |
+| M8 | LLM via MCP | ✅ 10 tools + Claude Sonnet |
+| - | Demo video | ✅ Demo.mp4 |
+| - | Unit tests | ✅ 30+ tests in tests/test_dal.py |
+| - | Year-based partitioning | ✅ year/month fields |
+| - | Offset pagination | ✅ limit/offset on Q5 |
+| - | Retry + DLQ | ✅ Exponential backoff + /ingest/dlq |
+| - | Anti-hallucination | ✅ Strict system prompt |
 
 ---
 
-**Built with:** Flask · MongoDB · Python 3.12 · Yahoo Finance · Claude AI · MCP  
+**Built with:** Flask · MongoDB · PySpark · Python 3.12 · Yahoo Finance · Claude AI · MCP  
 **GitHub:** https://github.com/RaduTugui/financial_dw  
-**Version:** 1.0.0 | **Status:** Complete
+**Demo:** [Demo.mp4](Demo.mp4)

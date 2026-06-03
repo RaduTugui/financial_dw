@@ -526,6 +526,7 @@
     <div class="nav-item" onclick="showPage('timeseries')">📉 Time Series</div>
     <div class="nav-item" onclick="showPage('sources')">🔌 Data Sources</div>
     <div class="nav-item" onclick="showPage('provenance')">🔍 Provenance</div>
+    <div class="nav-item" onclick="showPage('analytics')">📈 Analytics</div>
     <div class="nav-item" onclick="showPage('mcp')">🤖 AI Assistant</div>
     <div class="nav-item" onclick="showPage('ingest')">⬆️ Ingest Data</div>
 </div>
@@ -877,6 +878,98 @@
     </div>
 
     <!-- ══════════════════════════════════════════════
+         ANALYTICS PAGE (UC3)
+    ══════════════════════════════════════════════ -->
+    <div class="page" id="page-analytics">
+        <div class="page-header">
+            <div>
+                <h1>📈 Analytics</h1>
+                <p>UC3: Data Aggregation, Analytics and Data Mining</p>
+            </div>
+            <button class="btn btn-blue" onclick="runAnalytics()">▶ Run Analytics (All)</button>
+        </div>
+
+        <div class="card" style="padding:20px;margin-bottom:16px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:flex-end;">
+                <div>
+                    <label style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:6px;">INSTRUMENT</label>
+                    <select id="analytics-instrument" style="width:100%"><option value="">Select instrument...</option></select>
+                </div>
+                <div>
+                    <label style="color:var(--text-muted);font-size:12px;display:block;margin-bottom:6px;">DATA SOURCE</label>
+                    <select id="analytics-source" style="width:100%"><option value="">Select source...</option></select>
+                </div>
+                <button class="btn btn-blue" onclick="loadAnalytics()">📊 Load</button>
+            </div>
+        </div>
+
+        <div id="analytics-stats" style="display:none;">
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px;">
+                <div class="stat-card" style="padding:14px;"><div class="label">Min Price</div><div class="value" id="an-min" style="font-size:18px;">—</div></div>
+                <div class="stat-card" style="padding:14px;"><div class="label">Max Price</div><div class="value" id="an-max" style="font-size:18px;">—</div></div>
+                <div class="stat-card" style="padding:14px;"><div class="label">Avg Price</div><div class="value" id="an-avg" style="font-size:18px;">—</div></div>
+                <div class="stat-card" style="padding:14px;"><div class="label">Median</div><div class="value" id="an-median" style="font-size:18px;">—</div></div>
+                <div class="stat-card" style="padding:14px;"><div class="label">Volatility</div><div class="value" id="an-vol" style="font-size:18px;">—</div></div>
+                <div class="stat-card" style="padding:14px;"><div class="label">% Change</div><div class="value" id="an-change" style="font-size:18px;">—</div></div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+                <div class="card">
+                    <div class="card-header"><h3>📈 Trend Analysis</h3></div>
+                    <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Direction</span><span id="an-trend-dir" style="font-weight:600;">—</span></div>
+                        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Strength</span><span id="an-trend-str">—</span></div>
+                        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Data Points</span><span id="an-points">—</span></div>
+                        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Data Quality</span><span id="an-quality">—</span></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3>🔮 Price Forecast</h3></div>
+                    <div style="padding:16px;text-align:center;">
+                        <div style="color:var(--text-muted);font-size:12px;">PREDICTED NEXT DAY</div>
+                        <div id="an-forecast-price" style="font-size:32px;font-weight:700;color:var(--accent-blue);margin:8px 0;">—</div>
+                        <div id="an-forecast-change" style="font-size:14px;">—</div>
+                        <div style="color:var(--text-muted);font-size:11px;margin-top:8px;">Linear trend extrapolation</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3>⚠️ Risk Signal</h3></div>
+                    <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Risk Level</span><span id="an-risk-level" style="font-weight:600;">—</span></div>
+                        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Price Range</span><span id="an-risk-range">—</span></div>
+                        <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Volatility</span><span id="an-risk-daily">—</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom:16px;">
+                <div class="card-header">
+                    <h3>🗂️ Year/Month Partition View</h3>
+                    <span style="color:var(--text-muted);font-size:12px;">Year-based partitioning for scalable queries</span>
+                </div>
+                <div style="padding:16px;">
+                    <table><thead><tr><th>Year</th><th>Month</th><th>Data Points</th><th>Avg Close</th><th>Min</th><th>Max</th></tr></thead>
+                    <tbody id="an-partition-body"><tr><td colspan="6" class="empty">Load analytics to see partitions</td></tr></tbody></table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h3>⚖️ All Instruments Comparison</h3></div>
+                <div style="overflow-x:auto;">
+                    <table><thead><tr><th>Symbol</th><th>Class</th><th>Avg Price</th><th>% Change</th><th>Volatility</th><th>Data Points</th><th>Risk</th></tr></thead>
+                    <tbody id="an-comparison-body"><tr><td colspan="7" class="empty">Click "Run Analytics" to compare all instruments</td></tr></tbody></table>
+                </div>
+            </div>
+        </div>
+
+        <div id="analytics-empty" class="card" style="padding:60px;text-align:center;">
+            <div style="font-size:48px;margin-bottom:16px;">📊</div>
+            <div style="color:var(--text-muted);font-size:16px;">Select an instrument and click Load</div>
+            <div style="color:var(--text-muted);font-size:13px;margin-top:8px;">Or click "Run Analytics" to compare all instruments at once</div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
          MCP TOOLS PAGE
     ══════════════════════════════════════════════ -->
     <div class="page" id="page-mcp">
@@ -1223,6 +1316,7 @@ function showPage(name) {
     if (name === 'provenance') loadProvSelects();
     if (name === 'mcp') loadMcpTools();
     if (name === 'ingest') loadIngestSelects();
+    if (name === 'analytics') loadAnalyticsSelects();
 }
 
 // ── MODAL ──
@@ -2354,6 +2448,202 @@ function setTheme(mode) {
 function initTheme() {
     const saved = localStorage.getItem('theme') || 'dark';
     setTheme(saved);
+}
+
+// ── ANALYTICS ──────────────────────────────────────────────
+
+async function loadAnalyticsSelects() {
+    const inst = await api('/api/instruments?limit=200');
+    const src  = await api('/api/sources');
+    allInstruments = inst.data || [];
+    allSources     = src.data  || [];
+
+    const iSel = document.getElementById('analytics-instrument');
+    iSel.innerHTML = '<option value="">Select instrument...</option>' +
+        allInstruments.map(i => `<option value="${i.assetId}">${i.symbol} - ${i.name}</option>`).join('');
+
+    const sSel = document.getElementById('analytics-source');
+    sSel.innerHTML = '<option value="">Select source...</option>' +
+        allSources.map(s => `<option value="${s.dataSourceId}">${s.providerName}</option>`).join('');
+}
+
+async function loadAnalytics() {
+    const instId = document.getElementById('analytics-instrument').value;
+    const srcId  = document.getElementById('analytics-source').value;
+
+    if (!instId || !srcId) {
+        alert('Please select an instrument and data source!');
+        return;
+    }
+
+    document.getElementById('analytics-empty').style.display = 'none';
+    document.getElementById('analytics-stats').style.display = 'block';
+
+    // Load stats
+    const stats = await api(`/api/analytics/timeseries-stats?instrumentId=${instId}&dataSourceId=${srcId}`);
+    const s = stats.stats || {};
+
+    document.getElementById('an-min').textContent    = s.minPrice    ? `$${s.minPrice.toFixed(2)}`    : '—';
+    document.getElementById('an-max').textContent    = s.maxPrice    ? `$${s.maxPrice.toFixed(2)}`    : '—';
+    document.getElementById('an-avg').textContent    = s.avgPrice    ? `$${s.avgPrice.toFixed(2)}`    : '—';
+    document.getElementById('an-median').textContent = s.medianPrice ? `$${s.medianPrice.toFixed(2)}` : '—';
+    document.getElementById('an-vol').textContent    = s.volatility  ? `${s.volatility.toFixed(2)}%`  : '—';
+    document.getElementById('an-points').textContent = s.count       || '—';
+    document.getElementById('an-quality').textContent = s.dataQuality || '—';
+
+    const change = s.percentChange || 0;
+    const changeEl = document.getElementById('an-change');
+    changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+    changeEl.style.color = change >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+
+    // Trend
+    const trendEl = document.getElementById('an-trend-dir');
+    if (change > 5)       { trendEl.textContent = '🚀 Strong Uptrend';   trendEl.style.color = 'var(--accent-green)'; }
+    else if (change > 0)  { trendEl.textContent = '📈 Uptrend';          trendEl.style.color = 'var(--accent-green)'; }
+    else if (change > -5) { trendEl.textContent = '📉 Downtrend';        trendEl.style.color = 'var(--accent-red)'; }
+    else                  { trendEl.textContent = '💥 Strong Downtrend'; trendEl.style.color = 'var(--accent-red)'; }
+
+    document.getElementById('an-trend-str').textContent = Math.abs(change).toFixed(2) + '% total move';
+
+    // Forecast (simple linear extrapolation)
+    if (s.minPrice && s.maxPrice && s.avgPrice) {
+        const currentPrice = s.latestPrice || s.avgPrice;
+        const trend = change / (s.count || 90);
+        const forecast = currentPrice * (1 + trend / 100);
+        const fChange  = ((forecast - currentPrice) / currentPrice * 100);
+
+        document.getElementById('an-forecast-price').textContent = `$${forecast.toFixed(2)}`;
+        const fcEl = document.getElementById('an-forecast-change');
+        fcEl.textContent = `${fChange >= 0 ? '+' : ''}${fChange.toFixed(3)}% expected`;
+        fcEl.style.color = fChange >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+    }
+
+    // Calculate real volatility from time series (daily returns stddev)
+    const tsForRisk = await api(`/api/timeseries?instrumentId=${instId}&dataSourceId=${srcId}&limit=200`);
+    const pricesForVol = (tsForRisk.data || []).map(r => r.indicators?.close).filter(Boolean).reverse();
+    let realVol = 0;
+    if (pricesForVol.length > 1) {
+        const rets = [];
+        for (let i = 1; i < pricesForVol.length; i++) {
+            rets.push((pricesForVol[i] - pricesForVol[i-1]) / pricesForVol[i-1] * 100);
+        }
+        const mean = rets.reduce((a,b) => a+b, 0) / rets.length;
+        const variance = rets.reduce((a,b) => a + Math.pow(b-mean, 2), 0) / rets.length;
+        realVol = Math.sqrt(variance);
+    }
+
+    document.getElementById('an-vol').textContent = realVol ? `${realVol.toFixed(2)}%` : '—';
+
+    // Risk signal based on actual volatility
+    const riskEl = document.getElementById('an-risk-level');
+    if (realVol > 3)        { riskEl.textContent = '🔴 HIGH RISK';   riskEl.style.color = 'var(--accent-red)'; }
+    else if (realVol > 1.5) { riskEl.textContent = '🟡 MEDIUM RISK'; riskEl.style.color = 'var(--accent-orange)'; }
+    else                    { riskEl.textContent = '🟢 LOW RISK';    riskEl.style.color = 'var(--accent-green)'; }
+
+    const range = s.maxPrice && s.minPrice ? (s.maxPrice - s.minPrice).toFixed(2) : '—';
+    document.getElementById('an-risk-range').textContent = `$${range}`;
+    document.getElementById('an-risk-daily').textContent = realVol ? `${realVol.toFixed(2)}% daily stddev` : '—';
+
+    // Year/Month partition table
+    const ts = await api(`/api/timeseries?instrumentId=${instId}&dataSourceId=${srcId}&limit=500`);
+    const records = ts.data || [];
+
+    // Group by year/month
+    const partitions = {};
+    records.forEach(r => {
+        const date = new Date(r.dataTimestamp);
+        const year  = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const key   = `${year}-${String(month).padStart(2,'0')}`;
+        if (!partitions[key]) {
+            partitions[key] = { year, month, count: 0, closes: [], min: Infinity, max: -Infinity };
+        }
+        const close = r.indicators?.close;
+        if (close) {
+            partitions[key].count++;
+            partitions[key].closes.push(close);
+            if (close < partitions[key].min) partitions[key].min = close;
+            if (close > partitions[key].max) partitions[key].max = close;
+        }
+    });
+
+    const tbody = document.getElementById('an-partition-body');
+    const sorted = Object.entries(partitions).sort((a,b) => b[0].localeCompare(a[0]));
+    tbody.innerHTML = sorted.map(([key, p]) => {
+        const avg = p.closes.reduce((a,b) => a+b, 0) / p.closes.length;
+        return `<tr>
+            <td><strong>${p.year}</strong></td>
+            <td>${p.month.toString().padStart(2,'0')}</td>
+            <td>${p.count}</td>
+            <td>$${avg.toFixed(2)}</td>
+            <td style="color:var(--accent-red);">$${p.min.toFixed(2)}</td>
+            <td style="color:var(--accent-green);">$${p.max.toFixed(2)}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="6" class="empty">No data</td></tr>';
+}
+
+async function runAnalytics() {
+    // Run comparison for ALL instruments
+    const inst = await api('/api/instruments?limit=200');
+    const src  = await api('/api/sources');
+    allInstruments = inst.data || [];
+    allSources     = src.data  || [];
+
+    // Find Yahoo source
+    const yahoo = allSources.find(s => s.providerType === 'yahoo');
+    if (!yahoo) { alert('No Yahoo Finance source found!'); return; }
+
+    document.getElementById('analytics-empty').style.display = 'none';
+    document.getElementById('analytics-stats').style.display = 'block';
+
+    const tbody = document.getElementById('an-comparison-body');
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">Computing analytics for all instruments...</td></tr>';
+
+    const rows = [];
+    for (const instrument of allInstruments) {
+        try {
+            const stats = await api(`/api/analytics/timeseries-stats?instrumentId=${instrument.assetId}&dataSourceId=${yahoo.dataSourceId}`);
+            const s = stats.stats || {};
+            if (!s.count) continue;
+
+            const change = s.percentChange || 0;
+
+            // Calculate volatility from time series data (daily returns stddev)
+            const tsData = await api(`/api/timeseries?instrumentId=${instrument.assetId}&dataSourceId=${yahoo.dataSourceId}&limit=200`);
+            const prices = (tsData.data || []).map(r => r.indicators?.close).filter(Boolean).reverse();
+
+            let vol = 0;
+            if (prices.length > 1) {
+                const returns = [];
+                for (let i = 1; i < prices.length; i++) {
+                    returns.push((prices[i] - prices[i-1]) / prices[i-1] * 100);
+                }
+                const mean = returns.reduce((a,b) => a+b, 0) / returns.length;
+                const variance = returns.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / returns.length;
+                vol = Math.sqrt(variance);
+            }
+
+            // Risk based on daily volatility (matches Spark output)
+            let risk, riskColor;
+            if (vol > 3)        { risk = '🔴 HIGH';   riskColor = 'var(--accent-red)'; }
+            else if (vol > 1.5) { risk = '🟡 MEDIUM'; riskColor = 'var(--accent-orange)'; }
+            else                { risk = '🟢 LOW';    riskColor = 'var(--accent-green)'; }
+
+            const changeColor = change >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+
+            rows.push(`<tr>
+                <td><strong style="color:var(--accent-blue);">${instrument.symbol}</strong></td>
+                <td>${instrument.instrumentClass}</td>
+                <td>$${(s.avgPrice||0).toFixed(2)}</td>
+                <td style="color:${changeColor};">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</td>
+                <td>${vol.toFixed(2)}%</td>
+                <td>${s.count || 0}</td>
+                <td style="color:${riskColor};font-weight:600;">${risk}</td>
+            </tr>`);
+        } catch(e) { continue; }
+    }
+
+    tbody.innerHTML = rows.join('') || '<tr><td colspan="7" class="empty">No data found</td></tr>';
 }
 
 // ── INIT ──
