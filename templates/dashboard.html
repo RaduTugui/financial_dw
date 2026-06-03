@@ -1279,7 +1279,7 @@ async function loadDashboard() {
                 <td>${badge(i.instrumentClass)}</td>
                 <td>${i.region}</td>
                 <td>
-                    <button class="btn btn-outline btn-sm" onclick="showPage('timeseries')">📉 Chart</button>
+                    <button class="btn btn-outline btn-sm" onclick="goToChart('${i.assetId}')">📉 Chart</button>
                 </td>
             </tr>`).join('');
     }
