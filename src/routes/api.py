@@ -206,13 +206,12 @@ def get_time_series():
             except ValueError:
                 return jsonify({'error': 'Invalid endDate format (use ISO format)'}), 400
 
-        # Retrieve time series
         data = TimeSeriesService.get_time_series(
             instrument_id=instrument_id,
             data_source_id=data_source_id,
             start_date=start_datetime,
             end_date=end_datetime,
-            limit=limit
+            limit=10000  # fetch all, paginate in Python
         )
 
         if not data:
