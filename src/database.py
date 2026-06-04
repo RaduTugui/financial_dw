@@ -76,6 +76,21 @@ def _create_indexes():
     db.time_series_data.create_index([('dataTimestamp', DESCENDING)])
     db.time_series_data.create_index([('seriesId', ASCENDING)])
 
+    # Year-based partitioning indexes for scalable queries
+    try:
+        db.time_series_data.create_index(
+            [('instrumentId', ASCENDING), ('dataSourceId', ASCENDING),
+             ('year', ASCENDING), ('month', ASCENDING)],
+            name='idx_ts_year_month_partition'
+        )
+        db.time_series_data.create_index(
+            [('year', ASCENDING), ('month', ASCENDING)],
+            name='idx_year_month'
+        )
+        print("✓ Year/month partition indexes created")
+    except Exception:
+        pass  # Indexes already exist - that's fine
+
     # Data Sources indexes
     db.data_sources.create_index([('dataSourceId', ASCENDING)], unique=True)
     db.data_sources.create_index([('providerName', ASCENDING)])
@@ -85,14 +100,18 @@ def _create_indexes():
     db.data_provenance.create_index([('dataSourceId', ASCENDING)])
 
     # Instrument Attributes indexes
-    db.instrument_attributes.create_index([('instrumentId', ASCENDING), ('attributeId', ASCENDING)])
+    db.instrument_attributes.create_index(
+        [('instrumentId', ASCENDING), ('attributeId', ASCENDING)]
+    )
     db.instrument_attributes.create_index([('attributeName', ASCENDING)])
 
     # Portfolio indexes
     db.portfolios.create_index([('portfolioId', ASCENDING)], unique=True)
 
     # Portfolio Holdings indexes
-    db.portfolio_holdings.create_index([('portfolioId', ASCENDING), ('instrumentId', ASCENDING)])
+    db.portfolio_holdings.create_index(
+        [('portfolioId', ASCENDING), ('instrumentId', ASCENDING)]
+    )
 
     # Analytics Jobs indexes
     db.analytics_jobs.create_index([('jobId', ASCENDING)], unique=True)
